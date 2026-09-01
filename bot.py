@@ -218,7 +218,7 @@ def callback_query(call):
                     channel_markup.add(btn_buy, btn_sell)
                     channel_markup.add(btn_phone)
                     
-                    bot.send_message(CHANNEL_USERNAME, "👇", reply_markup=channel_markup)
+                    bot.send_message(CHANNEL_USERNAME, ".", reply_markup=channel_markup)
                     
                     user_albums.pop(group_id, None)
                 bot.answer_callback_query(call.id, "አልበሙ ተለጥፏል! ✅")
