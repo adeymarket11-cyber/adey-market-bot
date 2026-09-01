@@ -231,4 +231,4 @@ def callback_query(call):
             bot.edit_message_text("❌ ውድቅ ተደርጓል", call.message.chat.id, call.message.id)
 
 print("ቦቱ በአግባቡ እየሰራ ነው...", flush=True)
-bot.polling(none_stop=True)
+bot.infinity_polling(skip_pending=True)
