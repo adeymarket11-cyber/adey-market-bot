@@ -79,7 +79,7 @@ def handle_message(message):
                         media_group.append(InputMediaPhoto(msg.photo[-1].file_id))
                 
                 bot.send_media_group(CHANNEL_USERNAME, media_group)
-                bot.send_message(CHANNEL_USERNAME reply_markup=channel_markup)
+                bot.send_message(CHANNEL_USERNAME, " ", reply_markup=channel_markup)
                 user_albums.pop(group_id, None)
             else:
                 msg_id = edit_info['msg_id']
