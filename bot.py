@@ -231,7 +231,7 @@ def callback_query(call):
             bot.edit_message_text("❌ ውድቅ ተደርጓል", call.message.chat.id, call.message.id)
 
 print("ቦቱ በአግባቡ እየሰራ ነው...", flush=True)
-@bot.message_handler(func=lambda message: True)
+@bot.message_handler(func=lambda message: True
 def handle_text_messages(message):
     chat_id = message.chat.id
     text = message.text
