@@ -8,7 +8,7 @@ import sys
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')
 
-# Render ፖርት እንዲኖር ስለሚፈልግ የሚከፈት አነስተኛ ሰርቨር
+# Render ፖርት እንዲጠይቅ ስለሚፈልግ የሚከፈት አነስተኛ ሰርቨር (በጀርባ የሚሰራ)
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -34,4 +34,14 @@ BOT_LINK = "https://t.me/Adey_used_bot"
 ADMIN_USERNAME = "https://t.me/adeyused"
 ADMIN_PHONE_LINK = "https://t.me/adeyused"
 
-# (ቀጣዩ የቦትዎ ኮዶች እዚህ ይቀጥላሉ... ማስታወሻ፦ ከዚህ በታች ያሉትን የቦትዎን ትክክለኛ የኮድ ክፍሎች ማስተካከል ከፈለጉ ማስገባት ይችላሉ)
+# --- የቦቱ ዋና ተግባራት እና የኮድ ክፍሎች ---
+user_albums = {}
+
+@bot.message_handler(commands=['start'])
+def send_welcome(bot_message):
+    bot.reply_to(bot_message, "ሰላም! ወደ adey-market-bot እንኳን በደህና መጡ።")
+
+# (የቀሩት የቦትዎ ኮዶች ካሉዎት ከዚህ በታች መለጠፍ ይችላሉ፣ ዋናው ቦቱ እንዳይዘጋ የሚያደርገው infinity_polling ከታች ተቀምጧል)
+
+# ቦቱ ያለማቋረጥ እንዲሰራ የሚያደርገው ትዕዛዝ (ይህ መጥፋት የለበትም)
+bot.infinity_polling()
