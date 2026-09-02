@@ -21,7 +21,7 @@ import sys
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')
 
-TOKEN = "8780198432:AAF5acRHkKjlbNCei49N_B99EbzY9f3nGus"
+TOKEN = "8780198432:AAFr_2jfhXd-2jUzz_okokphj8_vSCVl-Y8"
 bot = telebot.TeleBot(TOKEN)
 
 ADMIN_CHAT_ID = "8703011579"
@@ -231,3 +231,19 @@ def callback_query(call):
             bot.edit_message_text("❌ ውድቅ ተደርጓል", call.message.chat.id, call.message.id)
 
 print("ቦቱ በአግባቡ እየሰራ ነው...", flush=True)
+@bot.message_handler(content_types=['text'])
+def handle_user_text(message):
+    if message.text and message.text.startswith('/'):
+        return
+    
+    chat_id = message.chat.id
+    text = message.text
+    
+    bot.send_message(
+        ADMIN_CHAT_ID, 
+        f"📞 ከ ተጠቃሚ (ID: {chat_id}) የደረሰ ተጨማሪ መረጃ/ስልክ ቁጥር:\n\n{text}"
+    )
+    bot.send_message(
+        chat_id, 
+        "✅ ስልክ ቁጥርዎ/መረጃዎ በአስተዳዳሪው ዘንድ ደርሷል!"
+    )
