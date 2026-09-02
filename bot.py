@@ -21,7 +21,7 @@ import sys
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')
 
-TOKEN = "8780198432:AAF5vqtPUan2dmKPSXmuCCZcIut1e_VelZs"
+TOKEN = "8780198432:AAFr_2jfhXd-2jUzz_okokphj8_vSCVl-Y8"
 bot = telebot.TeleBot(TOKEN)
 
 ADMIN_CHAT_ID = "8703011579"
