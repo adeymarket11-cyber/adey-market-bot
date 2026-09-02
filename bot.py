@@ -232,9 +232,20 @@ def callback_query(call):
 
 print("ቦቱ በአግባቡ እየሰራ ነው...", flush=True)
 @bot.message_handler(func=lambda message: True)
-def handle_text_messages(message):
+def handle_user_text(message):
+    if message.text and message.text.startswith('/'):
+        return
+    
     chat_id = message.chat.id
     text = message.text
-    bot.send_message(ADMIN_CHAT_ID, f"📞 ከ ተጠቃሚ (ID: {chat_id}) የደረሰ ተጨማሪ መረጃ/ስልክ ቁጥር:\n\n{text}")
-    bot.send_message(chat_id, "✅ ስልክ ቁጥርዎ/መረጃዎ ተቀብሏል!")
+    
+    bot.send_message(
+        ADMIN_CHAT_ID, 
+        f"📞 ከ ተጠቃሚ (ID: {chat_id}) የደረሰ ተጨማሪ መረጃ/ስልክ ቁጥር:\n\n{text}"
+    )
+    bot.send_message(
+        chat_id, 
+        "✅ ስልክ ቁጥርዎ/መረጃዎ በአስተዳዳሪው ዘንድ ደርሷል!"
+    )
+
 bot.infinity_polling(skip_pending=True)
