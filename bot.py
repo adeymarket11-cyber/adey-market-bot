@@ -8,7 +8,25 @@ import sys
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')
 
-TOKEN = "8780198432:AAFcQyfiyo8q1AtXbNS_XYt8ufHwXIFjyyA"
+# --- Web Server (Render ላይ ቦቱ እንዳይቆም/እንዳይተኛ የሚረዳ) ---
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running 24/7!")
+
+def run_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), SimpleHandler)
+    server.serve_forever()
+
+# ሰቨሩን በጀርባ (Background) ማስጀመር
+server_thread = threading.Thread(target=run_server)
+server_thread.daemon = True
+server_thread.start()
+# --------------------------------------------------------
+
+TOKEN = "6780198432:AAFr_2JfhXd-2Juzz_okokphj8_vSCVl-Y8"
 bot = telebot.TeleBot(TOKEN)
 
 ADMIN_CHAT_ID = "8703011579"
@@ -26,26 +44,26 @@ def get_main_keyboard():
     markup.add(KeyboardButton("🛒 እቃ ለመግዛት"), KeyboardButton("📞 እቃ ለመሸጥ"))
     return markup
 
+# 1. የ /start ትዕዛዝ ማስተናገጃ
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     welcome_text = (
         "🇪🇹 **እንኳን ወደ አደይ ማርኬት (Adey Market) በደህና መጡ!** 🛒\n\n"
-        "• እዚህ መድረክ ላይ ያገለገሉ እና አዲስ እቃዎችን 🛒 ለማግኘት ወይም 📞 ለመሸጥ የሚችሉበት መድረክ ነው\n"
-        "• ጥራት ያላቸውን እቃዎች በጥሩ ዋጋ ያገኛሉ!"
+        "• እዚህ መድረክ ላይ አዲስ እና ጥራት ያላቸው እቃዎችን 🛒 በቀላሉ መግዛት ወይም 📞 መሸጥ ይችላሉ!\n"
+        "• ጥራት ያላቸው እቃዎችና ምርቶች በታማኝነት ይገኙበታል ✨\n\n"
+        "👇 እባክዎ ከታች ካሉት አማራጮች አንዱን ይምረጡ፡"
     )
     bot.send_message(message.chat.id, welcome_text, reply_markup=get_main_keyboard(), parse_mode="Markdown")
 
-@bot.message_handler(content_types=['text', 'photo'])
-def handle_message(message):
+# 2. የጽሁፍ መልዕክቶች ማስተናገጃ
+@bot.message_handler(content_types=['text'])
+def handle_text(message):
     chat_id = message.chat.id
     
-    # 1. አድሚኑ ማስታወቂያ እያስተካከለ ከሆነ
     if str(chat_id) == str(ADMIN_CHAT_ID) and chat_id in admin_editing:
         edit_info = admin_editing[chat_id]
-        new_caption = message.caption if message.content_type == 'photo' else message.text
-        if not new_caption:
-            new_caption = message.text
-            
+        new_caption = message.text
+        
         user_id = edit_info['user_id']
         is_album = edit_info['is_album']
         group_id = edit_info['group_id']
@@ -69,14 +87,7 @@ def handle_message(message):
                 bot.send_media_group(CHANNEL_USERNAME, media_group)
                 bot.send_message(CHANNEL_USERNAME, "👇 ለግዢ እና ሽያጭ ከታች ያሉትን ሊንኮች ይጠቀሙ:", reply_markup=channel_markup)
                 user_albums.pop(group_id, None)
-            else:
-                msg_id = edit_info['msg_id']
-                forwarded = bot.forward_message(ADMIN_CHAT_ID, user_id, msg_id)
-                photo_file_id = forwarded.photo[-1].file_id
-                bot.delete_message(ADMIN_CHAT_ID, forwarded.message_id)
-                
-                bot.send_photo(CHANNEL_USERNAME, photo_file_id, caption=new_caption, reply_markup=channel_markup)
-                
+            
             bot.send_message(chat_id, "✅ ማስታወቂያው ወደ ቻናል ተልኳል!", reply_markup=get_main_keyboard())
         except Exception as e:
             bot.send_message(chat_id, f"❌ ስህተት ተፈጥሯል: {e}", reply_markup=get_main_keyboard())
@@ -84,67 +95,95 @@ def handle_message(message):
         admin_editing.pop(chat_id, None)
         return
 
-    # 2. ተጠቃሚዎች ሜኑ ቁልፎችን ሲጫኑ
-    if message.content_type == 'text':
-        if message.text == "🛒 እቃ ለመግዛት":
-            markup = InlineKeyboardMarkup()
-            markup.add(InlineKeyboardButton("🛒 ከናንተ ለመግዛት", url=ADMIN_USERNAME))
-            bot.send_message(chat_id, "🛒 እቃ ለመግዛት የሚከተለውን ሊንክ ይጠቀሙ:", reply_markup=markup)
-            return
-        elif message.text == "📞 እቃ ለመሸጥ":
-            sell_prompt = (
-                "📞 **እቃ ለመሸጥ የሚከተሉትን መረጃዎች ልኩልን**\n\n"
-                "• የዕቃው ፎቶ (ወይም ቪዲዮ አልበም)\n"
-                "• የዕቃው ስም እና መግለጫ\n"
-                "• ዋጋ\n"
-                "• **ስልክ ቁጥር**\n"
-                "• የመገኛ ቦታ አድራሻ (ከተቻለ)\n\n"
-                "👉 *እባክዎን መረጃውን ከፎቶ ጋር በአንድ ላይ (Caption ላይ አድርገው) ይላኩን!*"
-            )
-            bot.send_message(chat_id, sell_prompt, reply_markup=get_main_keyboard(), parse_mode="Markdown")
-            return
-        else:
-            # 3. ተጠቃሚዎች ስልክ ቁጥር ወይም ሌላ ጽሁፍ ሲልኩ ወደ አድሚን እንዲደርስ
+    if message.text == "🛒 እቃ ለመግዛት":
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("🛒 ከናንተ ለመግዛት", url=ADMIN_USERNAME))
+        bot.send_message(chat_id, "🛒 እቃ ለመግዛት የሚከተለውን ሊንክ ይጠቀሙ:", reply_markup=markup)
+        return
+    elif message.text == "📞 እቃ ለመሸጥ":
+        sell_prompt = (
+            "📞 **እቃ ለመሸጥ የሚከተሉትን መረጃዎች ልኩልን**\n\n"
+            "• የዕቃው ፎቶ (ወይም ቪዲዮ አልበም)\n"
+            "• የዕቃው ስም እና መግለጫ\n"
+            "• ዋጋ\n"
+            "• **ስልክ ቁጥር**\n"
+            "• የመገኛ ቦታ አድራሻ (ከተቻለ)\n\n"
+            "👉 *እባክዎን መረጃውን ከፎቶ ጋር በአንድ ላይ (Caption ላይ አድርገው) ይላኩን!*"
+        )
+        bot.send_message(chat_id, sell_prompt, reply_markup=get_main_keyboard(), parse_mode="Markdown")
+        return
+    else:
+        if str(chat_id) != str(ADMIN_CHAT_ID):
             bot.forward_message(ADMIN_CHAT_ID, chat_id, message.id)
-            bot.send_message(chat_id, "✅ ስልክ ቁጥርዎ/መረጃዎ ወደ አድሚን ተላልፏል! እናመሰግናለን።", reply_markup=get_main_keyboard())
-            return
+            bot.send_message(chat_id, "✅ መረጃዎ/ስልክ ቁጥርዎ ወደ አድሚን ተላልፏል! እናመሰግናለን።", reply_markup=get_main_keyboard())
 
-    # 4. ተጠቃሚዎች ፎቶ ሲልኩ
-    if message.content_type == 'photo':
-        if message.media_group_id:
-            if message.media_group_id not in user_albums:
-                user_albums[message.media_group_id] = {
-                    'messages': [],
-                    'sent_admin': False,
-                    'user_id': chat_id
-                }
-            user_albums[message.media_group_id]['messages'].append(message)
+# 3. የፎቶ መልዕክቶች ማስተናገጃ
+@bot.message_handler(content_types=['photo'])
+def handle_photo(message):
+    chat_id = message.chat.id
+    
+    if str(chat_id) == str(ADMIN_CHAT_ID) and chat_id in admin_editing:
+        edit_info = admin_editing[chat_id]
+        new_caption = message.caption if message.caption else ""
+        user_id = edit_info['user_id']
+        is_album = edit_info['is_album']
+        group_id = edit_info['group_id']
+        
+        channel_markup = InlineKeyboardMarkup()
+        btn_buy = InlineKeyboardButton("🛒 እቃ ለመግዛት", url=ADMIN_USERNAME)
+        btn_sell = InlineKeyboardButton("💸 እቃ ለመሸጥ", url=BOT_LINK)
+        btn_phone = InlineKeyboardButton("📞 ስልክ 0985427286", url=ADMIN_PHONE_LINK)
+        channel_markup.add(btn_buy, btn_sell)
+        channel_markup.add(btn_phone)
+        
+        try:
+            msg_id = edit_info['msg_id']
+            forwarded = bot.forward_message(ADMIN_CHAT_ID, user_id, msg_id)
+            photo_file_id = forwarded.photo[-1].file_id
+            bot.delete_message(ADMIN_CHAT_ID, forwarded.message_id)
             
-            if not user_albums[message.media_group_id]['sent_admin']:
-                user_albums[message.media_group_id]['sent_admin'] = True
-                bot.send_message(chat_id, "✅ ፎቶዎችዎ ተቀብለዋል! አድሚኖች አሁንም በፍጥነት ይከታተላሉ።", reply_markup=get_main_keyboard())
-                
-                admin_markup = InlineKeyboardMarkup()
-                post_btn = InlineKeyboardButton("📢 ፖስት አድርግ", callback_data=f"postalbum_{message.media_group_id}_{chat_id}")
-                edit_btn = InlineKeyboardButton("✏️ አስተካክልና ፖስት", callback_data=f"editalbum_{message.media_group_id}_{chat_id}")
-                cancel_btn = InlineKeyboardButton("❌ ተወው", callback_data=f"cancel_album_{message.media_group_id}")
-                admin_markup.add(post_btn, edit_btn)
-                admin_markup.add(cancel_btn)
-                
-                bot.forward_message(ADMIN_CHAT_ID, chat_id, message.id)
-                bot.send_message(ADMIN_CHAT_ID, "📸 አዲስ አልበም (Album) የያዘ መልዕክት:", reply_markup=admin_markup)
-        else:
-            forwarded = bot.forward_message(ADMIN_CHAT_ID, chat_id, message.id)
+            bot.send_photo(CHANNEL_USERNAME, photo_file_id, caption=new_caption, reply_markup=channel_markup)
+            bot.send_message(chat_id, "✅ ፖስቱ በተሳካ ሁኔታ ተለጥፏል!", reply_markup=get_main_keyboard())
+        except Exception as e:
+            bot.send_message(chat_id, f"❌ ስህተት ተፈጥሯል: {e}", reply_markup=get_main_keyboard())
+            
+        admin_editing.pop(chat_id, None)
+        return
+
+    if message.media_group_id:
+        if message.media_group_id not in user_albums:
+            user_albums[message.media_group_id] = {
+                'messages': [],
+                'sent_admin': False,
+                'user_id': chat_id
+            }
+        user_albums[message.media_group_id]['messages'].append(message)
+        
+        if not user_albums[message.media_group_id]['sent_admin']:
+            user_albums[message.media_group_id]['sent_admin'] = True
+            bot.send_message(chat_id, "✅ ፎቶዎችዎ ተቀብለዋል! አድሚኖች አሁንም በፍጥነት ይከታተላሉ።", reply_markup=get_main_keyboard())
+            
             admin_markup = InlineKeyboardMarkup()
-            post_btn = InlineKeyboardButton("📢 ፖስት አድርግ", callback_data=f"postsingle_{message.id}_{chat_id}")
-            edit_btn = InlineKeyboardButton("✏️ አስተካክልና ፖስት", callback_data=f"editsingle_{message.id}_{chat_id}")
-            cancel_btn = InlineKeyboardButton("❌ ተወው", callback_data=f"cancel_{message.id}")
+            post_btn = InlineKeyboardButton("📢 ፖስት አድርግ", callback_data=f"postalbum_{message.media_group_id}_{chat_id}")
+            edit_btn = InlineKeyboardButton("✏️ አስተካክልና ፖስት", callback_data=f"editalbum_{message.media_group_id}_{chat_id}")
+            cancel_btn = InlineKeyboardButton("❌ ተወው", callback_data=f"cancel_album_{message.media_group_id}")
             admin_markup.add(post_btn, edit_btn)
             admin_markup.add(cancel_btn)
             
-            bot.send_message(ADMIN_CHAT_ID, "📸 አዲስ የተላከ ፎቶ (Single) ከምስል ጋር:", reply_markup=admin_markup)
+            bot.forward_message(ADMIN_CHAT_ID, chat_id, message.id)
+            bot.send_message(ADMIN_CHAT_ID, "📸 አዲስ አልበም (Album) የያዘ መልዕክት:", reply_markup=admin_markup)
+    else:
+        forwarded = bot.forward_message(ADMIN_CHAT_ID, chat_id, message.id)
+        admin_markup = InlineKeyboardMarkup()
+        post_btn = InlineKeyboardButton("📢 ፖስት አድርግ", callback_data=f"postsingle_{message.id}_{chat_id}")
+        edit_btn = InlineKeyboardButton("✏️ አስተካክልና ፖስት", callback_data=f"editsingle_{message.id}_{chat_id}")
+        cancel_btn = InlineKeyboardButton("❌ ተወው", callback_data=f"cancel_{message.id}")
+        admin_markup.add(post_btn, edit_btn)
+        admin_markup.add(cancel_btn)
+        
+        bot.send_message(ADMIN_CHAT_ID, "📸 አዲስ የተላከ ፎቶ (Single) ከምስል ጋር:", reply_markup=admin_markup)
 
-# 5. የአድሚን ቁልፍ መቆጣጠሪያ (Callback Query Handler)
+# 4. የአድሚን ቁልፍ መቆጣጠሪያ (Callback Query Handler)
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
     if call.message:
@@ -165,7 +204,7 @@ def callback_query(call):
                 'is_album': is_album,
                 'group_id': group_or_id if is_album else None
             }
-            bot.answer_callback_query(call.from_user.id, "✍️ አሁን አዲስ ማስተካከያ የሚደረግበትን አዲስ መልክ (Caption) ወይም ጽሁፍ ይላኩኝ።")
+            bot.answer_callback_query(call.from_user.id, "✍️ አሁን አዲስ ማስተካከያ የሚደረግበትን ጽሁፍ ይላኩኝ።")
             
         elif data.startswith("postsingle_"):
             parts = data.split("_")
@@ -179,7 +218,7 @@ def callback_query(call):
             try:
                 forwarded = bot.forward_message(ADMIN_CHAT_ID, user_id, msg_id)
                 photo_file_id = forwarded.photo[-1].file_id
-                caption = forwarded.caption
+                caption = forwarded.caption if forwarded.caption else ""
                 bot.delete_message(ADMIN_CHAT_ID, forwarded.message_id)
                 
                 bot.send_photo(CHANNEL_USERNAME, photo_file_id, caption=caption, reply_markup=channel_markup)
@@ -196,7 +235,7 @@ def callback_query(call):
                     media_group = []
                     for idx, msg in enumerate(user_albums[group_id]['messages']):
                         if idx == 0:
-                            media_group.append(InputMediaPhoto(msg.photo[-1].file_id, caption=msg.caption))
+                            media_group.append(InputMediaPhoto(msg.photo[-1].file_id, caption=msg.caption if msg.caption else ""))
                         else:
                             media_group.append(InputMediaPhoto(msg.photo[-1].file_id))
                     
@@ -213,7 +252,7 @@ def callback_query(call):
             except Exception as e:
                 bot.answer_callback_query(call.id, f"❌ ስህተት: {e}", show_alert=True)
                 
-        elif data.startswith("cancel_"):
+        elif data.startswith("cancel_") or data.startswith("cancel_album_"):
             bot.answer_callback_query(call.id, "❌ ተሰርዟል")
             bot.edit_message_text("❌ ይህ ልዕክ ተሰርዟልና ጠፍቷል።", call.message.chat.id, call.message.message_id)
 
