@@ -26,7 +26,7 @@ server_thread.daemon = True
 server_thread.start()
 # -------------------------------------------------------------------
 
-TOKEN = "6780198432:AAFr_2JfhXd-2Juzz_okokphj8_vSCVl-Y8"
+TOKEN = "8780198432:AAFcQyfiyo8q1AtXbNS_XYt8ufHwXIFjyyA"
 bot = telebot.TeleBot(TOKEN)
 
 ADMIN_CHAT_ID = "8703011579"
