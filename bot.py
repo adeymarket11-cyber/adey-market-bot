@@ -8,23 +8,23 @@ import sys
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')
 
-# --- Web Server (Render ላይ ቦቱ እንዳይቆም/እንዳይተኛ የሚረዳ) ---
-class SimpleHandler(BaseHTTPRequestHandler):
+# --- 1. የድር ሰርቨር (Render ፖርት እንዲያገኝ እና ቦቱ እንዳይተኛ የሚያደርግ) ---
+class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"Bot is running 24/7!")
+        self.wfile.write(b"Bot is active and running 24/7!")
 
-def run_server():
+def run_web_server():
     port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(('0.0.0.0', port), SimpleHandler)
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
     server.serve_forever()
 
-# ሰቨሩን በጀርባ (Background) ማስጀመር
-server_thread = threading.Thread(target=run_server)
+# ሰርቨሩን በጀርባ ማስጀመር
+server_thread = threading.Thread(target=run_web_server)
 server_thread.daemon = True
 server_thread.start()
-# --------------------------------------------------------
+# -------------------------------------------------------------------
 
 TOKEN = "6780198432:AAFr_2JfhXd-2Juzz_okokphj8_vSCVl-Y8"
 bot = telebot.TeleBot(TOKEN)
@@ -44,7 +44,7 @@ def get_main_keyboard():
     markup.add(KeyboardButton("🛒 እቃ ለመግዛት"), KeyboardButton("📞 እቃ ለመሸጥ"))
     return markup
 
-# 1. የ /start ትዕዛዝ ማስተናገጃ
+# 2. የ /start ትዕዛዝ
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     welcome_text = (
@@ -55,7 +55,7 @@ def send_welcome(message):
     )
     bot.send_message(message.chat.id, welcome_text, reply_markup=get_main_keyboard(), parse_mode="Markdown")
 
-# 2. የጽሁፍ መልዕክቶች ማስተናገጃ
+# 3. የጽሁፍ መልዕክቶች ማስተናገጃ
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     chat_id = message.chat.id
@@ -117,7 +117,7 @@ def handle_text(message):
             bot.forward_message(ADMIN_CHAT_ID, chat_id, message.id)
             bot.send_message(chat_id, "✅ መረጃዎ/ስልክ ቁጥርዎ ወደ አድሚን ተላልፏል! እናመሰግናለን።", reply_markup=get_main_keyboard())
 
-# 3. የፎቶ መልዕክቶች ማስተናገጃ
+# 4. የፎቶ መልዕክቶች ማስተናገጃ
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
     chat_id = message.chat.id
@@ -183,7 +183,7 @@ def handle_photo(message):
         
         bot.send_message(ADMIN_CHAT_ID, "📸 አዲስ የተላከ ፎቶ (Single) ከምስል ጋር:", reply_markup=admin_markup)
 
-# 4. የአድሚን ቁልፍ መቆጣጠሪያ (Callback Query Handler)
+# 5. የአድሚን ቁልፍ መቆጣጠሪያ
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
     if call.message:
