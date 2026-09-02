@@ -231,19 +231,3 @@ def callback_query(call):
             bot.edit_message_text("❌ ውድቅ ተደርጓል", call.message.chat.id, call.message.id)
 
 print("ቦቱ በአግባቡ እየሰራ ነው...", flush=True)
-@bot.message_handler(content_types=['text'])
-def handle_user_text(message):
-    if message.text and message.text.startswith('/'):
-        return
-    
-    chat_id = message.chat.id
-    text = message.text
-    
-    bot.send_message(
-        ADMIN_CHAT_ID, 
-        f"📞 ከ ተጠቃሚ (ID: {chat_id}) የደረሰ ተጨማሪ መረጃ/ስልክ ቁጥር:\n\n{text}"
-    )
-    bot.send_message(
-        chat_id, 
-        "✅ ስልክ ቁጥርዎ/መረጃዎ በአስተዳዳሪው ዘንድ ደርሷል!"
-    )
