@@ -30,8 +30,8 @@ def get_main_keyboard():
 def send_welcome(message):
     welcome_text = (
         "🇪🇹 **እንኳን ወደ አደይ ማርኬት (Adey Market) በደህና መጡ!** 🛒\n\n"
-        "• እዚህ ዎ ውስጥ ጥቅም ላይ ውለዋል አዲስ እቃዎችን 🛒 ለማግኘት ወይም 📞 ለመሸጥ የሚችሉበት መድረክ ነው\n"
-        "• ልጆች እና ምርቶች በበጣም ቆንጆ ይገኛል!"
+        "• እዚህ መድረክ ላይ ያገለገሉ እና አዲስ እቃዎችን 🛒 ለማግኘት ወይም 📞 ለመሸጥ የሚችሉበት መድረክ ነው\n"
+        "• ጥራት ያላቸውን እቃዎች በጥሩ ዋጋ ያገኛሉ!"
     )
     bot.send_message(message.chat.id, welcome_text, reply_markup=get_main_keyboard(), parse_mode="Markdown")
 
