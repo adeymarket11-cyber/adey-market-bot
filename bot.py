@@ -52,6 +52,38 @@ def send_welcome(message):
 def handle_message(message):
     chat_id = message.chat.id
     
+    # 1. አድሚኑ ኤዲት እያደረገ ከሆነ የሚሰራው
+    if str(chat_id) == str(ADMIN_CHAT_ID) and chat_id in admin_editing:
+        edit_info = admin_editing[chat_id]
+        new_caption = message.caption if message.content_type == 'photo' else message.text
+        if not new_caption:
+            new_caption = message.text
+            
+        user_id = edit_info['user_id']
+        is_album = edit_info['is_album']
+        group_id = edit_info['group_id']
+        
+        # እዚህ ጋር የእርስዎ የቀድሞ የአድሚን ኮድ ይቀጥላል (ማለትም ማስተካከያ የሚሰራበት ክፍል)
+        # (ያለዎትን የመጀመሪያ ኮድ እዚህ ላይ እንዳለ ይተዉት)
+        
+    # 2. ተራ ተጠቃሚዎች ስልክ ቁጥር ወይም ጽሁፍ ሲልኩ እዚህ ይገባል
+    else:
+        if message.text and message.text.startswith('/'):
+            return
+            
+        text = message.text
+        if text:
+            # ስልክ ቁጥሩን/መረጃውን ወደ አድሚን ይልካል
+            bot.send_message(
+                ADMIN_CHAT_ID, 
+                f"📞 ከ ተጠቃሚ (ID: {chat_id}) የደረሰ ስልክ ቁጥር/መረጃ:\n\n{text}"
+            )
+            # ለተጠቃሚው ማረጋገጫ ይሰጣል
+            bot.send_message(
+                chat_id, 
+                "✅ ስልክ ቁጥርዎ/መረጃዎ በአስተዳዳሪው ዘንድ ደርሷል!"
+            )
+# 1. አድሚኑ ኤዲት እያደረገ ከሆነ የሚሰራው
     if str(chat_id) == str(ADMIN_CHAT_ID) and chat_id in admin_editing:
         edit_info = admin_editing[chat_id]
         new_caption = message.caption if message.content_type == 'photo' else message.text
@@ -64,11 +96,49 @@ def handle_message(message):
         
         channel_markup = InlineKeyboardMarkup()
         btn_buy = InlineKeyboardButton("🛒 እቃ ለመግዛት", url=ADMIN_USERNAME)
-        btn_sell = InlineKeyboardButton("📦 እቃ ለመሸጥ", url=BOT_LINK)
+        btn_sell = InlineKeyboardButton("💸 እቃ ለመሸጥ", url=BOT_LINK)
         btn_phone = InlineKeyboardButton("📞 ስልክ 0985427286", url=ADMIN_PHONE_LINK)
         channel_markup.add(btn_buy, btn_sell)
         channel_markup.add(btn_phone)
         
+        try:
+            if is_album and group_id in user_albums:
+                media_group = []
+                for idx, m in enumerate(user_albums[group_id]):
+                    if idx == 0:
+                        media_group.append(InputMediaPhoto(m.photo[-1].file_id, caption=new_caption))
+                    else:
+                        media_group.append(InputMediaPhoto(m.photo[-1].file_id))
+                
+                bot.send_media_group(CHANNEL_USERNAME, media_group)
+                bot.send_message(CHANNEL_USERNAME, "👇 ለግዢ እና ሽያጭ ከታች ያሉትን ሊንኮች ይጠቀሙ:", reply_markup=channel_markup)
+                del user_albums[group_id]
+            else:
+                if message.content_type == 'photo':
+                    bot.send_photo(CHANNEL_USERNAME, message.photo[-1].file_id, caption=new_caption, reply_markup=channel_markup)
+                else:
+                    bot.send_message(CHANNEL_USERNAME, new_caption, reply_markup=channel_markup)
+                    
+            bot.send_message(chat_id, "✅ ማስታወቂያው ወደ ឆናሉ ተልኳል!")
+            del admin_editing[chat_id]
+        except Exception as e:
+            bot.send_message(chat_id, f"❌ ስህተት ተፈጥሯል: {e}")
+
+    # 2. ተራ ተጠቃሚዎች ስልክ ቁጥር ወይም ጽሁፍ ሲልኩ እዚህ ይገባል
+    else:
+        if message.text and message.text.startswith('/'):
+            return
+            
+        text = message.text
+        if text:
+            bot.send_message(
+                ADMIN_CHAT_ID, 
+                f"📞 ከ ተጠቃሚ (ID: {chat_id}) የደረሰ ስልክ ቁጥር/መረጃ:\n\n{text}"
+            )
+            bot.send_message(
+                chat_id, 
+                "✅ ስልክ ቁጥርዎ/መረጃዎ በአስተዳዳሪው ዘንድ ደርሷል!"
+            )
         try:
             if is_album and group_id in user_albums:
                 media_group = []
@@ -231,3 +301,21 @@ def callback_query(call):
             bot.edit_message_text("❌ ውድቅ ተደርጓል", call.message.chat.id, call.message.id)
 
 print("ቦቱ በአግባቡ እየሰራ ነው...", flush=True)
+@bot.message_handler(content_types=['text'])
+def handle_user_text(message):
+    if message.text and message.text.startswith('/'):
+        return
+    
+    chat_id = message.chat.id
+    text = message.text
+    
+    # ስልክ ቁጥሩን ወይም ጽሁፉን ወደ አድሚን ይልካል
+    bot.send_message(
+        ADMIN_CHAT_ID, 
+        f"📞 ከ ተጠቃሚ (ID: {chat_id}) የደረሰ ስልክ ቁጥር/መረጃ:\n\n{text}"
+    )
+    # ለተጠቃሚው ማረጋገጫ ይሰጣል
+    bot.send_message(
+        chat_id, 
+        "✅ ስልክ ቁጥርዎ/መረጃዎ በአስተዳዳሪው ዘንድ ደርሷል!"
+    )
