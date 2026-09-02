@@ -231,14 +231,19 @@ def callback_query(call):
             bot.edit_message_text("❌ ውድቅ ተደርጓል", call.message.chat.id, call.message.id)
 
 print("ቦቱ በአግባቡ እየሰራ ነው...", flush=True)
-@bot.message_handler(func=lambda message: True)
+# ተጠቃሚዎች የትኛውን ስቴት ላይ እንዳሉ ለመያዝ የሚረዳ መዝገብ (Dictionary)
+user_states = {}
+
+# ስልክ ቁጥር ወይም ተጨማሪ ጽሁፍ ሲልክ የሚቀበለው ሃንድለር
+@bot.message_handler(content_types=['text'])
 def handle_user_text(message):
     if message.text and message.text.startswith('/'):
         return
-    
+        
     chat_id = message.chat.id
     text = message.text
     
+    # ሁልጊዜም ተጠቃሚው የሚልካቸውን ጽሁፎች/ስልክ ቁጥሮች ወደ አድሚን እንዲልክ እናደርጋለን
     bot.send_message(
         ADMIN_CHAT_ID, 
         f"📞 ከ ተጠቃሚ (ID: {chat_id}) የደረሰ ተጨማሪ መረጃ/ስልክ ቁጥር:\n\n{text}"
@@ -247,5 +252,3 @@ def handle_user_text(message):
         chat_id, 
         "✅ ስልክ ቁጥርዎ/መረጃዎ በአስተዳዳሪው ዘንድ ደርሷል!"
     )
-
-bot.infinity_polling(skip_pending=True)
