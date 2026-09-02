@@ -237,4 +237,4 @@ def handle_text_messages(message):
     text = message.text
     bot.send_message(ADMIN_CHAT_ID, f"📞 ከ ተጠቃሚ (ID: {chat_id}) የደረሰ ተጨማሪ መረጃ/ስልክ ቁጥር:\n\n{text}")
     bot.send_message(chat_id, "✅ ስልክ ቁጥርዎ/መረጃዎ ተቀብሏል!")
-bot.infinity_polling(skip_pending=True)
+bot.infinity_polling(skip_pending=True
