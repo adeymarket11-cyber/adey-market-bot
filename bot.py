@@ -35,6 +35,7 @@ CHANNEL_USERNAME = "@adeymarket3"
 BOT_LINK = "https://t.me/Adey_used_bot"
 ADMIN_USERNAME = "https://t.me/adeyused"
 ADMIN_PHONE_LINK = "https://t.me/adeyused"
+SELL_ACCOUNT_LINK = "https://t.me/usedmarket19"
 
 user_albums = {}
 admin_editing = {}
@@ -70,7 +71,7 @@ def handle_text(message):
         
         channel_markup = InlineKeyboardMarkup()
         btn_buy = InlineKeyboardButton("🛒 እቃ ለመግዛት", url=ADMIN_USERNAME)
-        btn_sell = InlineKeyboardButton("💸 እቃ ለመሸጥ", url=BOT_LINK)
+        btn_sell = InlineKeyboardButton("💸 እቃ ለመሸጥ", url=SELL_ACCOUNT_LINK)
         btn_phone = InlineKeyboardButton("📞 ስልክ 0985427286", url=ADMIN_PHONE_LINK)
         channel_markup.add(btn_buy, btn_sell)
         channel_markup.add(btn_phone)
@@ -101,16 +102,14 @@ def handle_text(message):
         bot.send_message(chat_id, "🛒 እቃ ለመግዛት የሚከተለውን ሊንክ ይጠቀሙ:", reply_markup=markup)
         return
     elif message.text == "📞 እቃ ለመሸጥ":
+        sell_markup = InlineKeyboardMarkup()
+        sell_markup.add(InlineKeyboardButton("📞 እቃ ለመሸጥ (ሊንኩን ይጫኑ)", url=SELL_ACCOUNT_LINK))
+        
         sell_prompt = (
-            "📞 **እቃ ለመሸጥ የሚከተሉትን መረጃዎች ልኩልን**\n\n"
-            "• የዕቃው ፎቶ (ወይም ቪዲዮ አልበም)\n"
-            "• የዕቃው ስም እና መግለጫ\n"
-            "• ዋጋ\n"
-            "• **ስልክ ቁጥር**\n"
-            "• የመገኛ ቦታ አድራሻ (ከተቻለ)\n\n"
-            "👉 *እባክዎን መረጃውን ከፎቶ ጋር በአንድ ላይ (Caption ላይ አድርገው) ይላኩን!*"
+            "📞 **እቃ ለመሸጥ ከታች ያለውን ቁልፍ በመጫን በቀጥታ ያነጋገሩን!**\n\n"
+            "👉 *ሊንኩን በመጫን ወደ ራሳችን የቴሌግራም አካውንት ይወሰዳሉ።*"
         )
-        bot.send_message(chat_id, sell_prompt, reply_markup=get_main_keyboard(), parse_mode="Markdown")
+        bot.send_message(chat_id, sell_prompt, reply_markup=sell_markup, parse_mode="Markdown")
         return
     else:
         if str(chat_id) != str(ADMIN_CHAT_ID):
@@ -131,7 +130,7 @@ def handle_photo(message):
         
         channel_markup = InlineKeyboardMarkup()
         btn_buy = InlineKeyboardButton("🛒 እቃ ለመግዛት", url=ADMIN_USERNAME)
-        btn_sell = InlineKeyboardButton("💸 እቃ ለመሸጥ", url=BOT_LINK)
+        btn_sell = InlineKeyboardButton("💸 እቃ ለመሸጥ", url=SELL_ACCOUNT_LINK)
         btn_phone = InlineKeyboardButton("📞 ስልክ 0985427286", url=ADMIN_PHONE_LINK)
         channel_markup.add(btn_buy, btn_sell)
         channel_markup.add(btn_phone)
@@ -212,7 +211,7 @@ def callback_query(call):
             user_id = int(parts[2])
             
             channel_markup = InlineKeyboardMarkup()
-            channel_markup.add(InlineKeyboardButton("🛒 እቃ ለመግዛት", url=ADMIN_USERNAME), InlineKeyboardButton("💸 እቃ ለመሸጥ", url=BOT_LINK))
+            channel_markup.add(InlineKeyboardButton("🛒 እቃ ለመግዛት", url=ADMIN_USERNAME), InlineKeyboardButton("💸 እቃ ለመሸጥ", url=SELL_ACCOUNT_LINK))
             channel_markup.add(InlineKeyboardButton("📞 ስልክ 0985427286", url=ADMIN_PHONE_LINK))
             
             try:
@@ -240,7 +239,7 @@ def callback_query(call):
                             media_group.append(InputMediaPhoto(msg.photo[-1].file_id))
                     
                     channel_markup = InlineKeyboardMarkup()
-                    channel_markup.add(InlineKeyboardButton("🛒 እቃ ለመግዛት", url=ADMIN_USERNAME), InlineKeyboardButton("💸 እቃ ለመሸጥ", url=BOT_LINK))
+                    channel_markup.add(InlineKeyboardButton("🛒 እቃ ለመግዛት", url=ADMIN_USERNAME), InlineKeyboardButton("💸 እቃ ለመሸጥ", url=SELL_ACCOUNT_LINK))
                     channel_markup.add(InlineKeyboardButton("📞 ስልክ 0985427286", url=ADMIN_PHONE_LINK))
                     
                     bot.send_media_group(CHANNEL_USERNAME, media_group)
