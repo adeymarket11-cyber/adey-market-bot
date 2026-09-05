@@ -86,7 +86,8 @@ def handle_text(message):
                         media_group.append(InputMediaPhoto(msg.photo[-1].file_id))
                 
                 bot.send_media_group(CHANNEL_USERNAME, media_group)
-                # ጽሁፉ የሚልክበት ተጨማሪ ኮድ ሙሉ በሙሉ ጠፍቷል፣ አልበሙ ላይ ግን ቁልፎቹን ለማያያዝ ከፈለጉ ከታች ባለው መልኩ በሌላ መንገድ ይስተካከላል
+                # አልበሙ ከተላከ በኋላ ያለ ጽሁፍ ቁልፎቹን ብቻ መላክ (ቴሌግራም ላይ አልበም ላይ ቁልፍ በቀጥታ አይሰቀልም)
+                bot.send_message(CHANNEL_USERNAME, "የእቃው ዝርዝር ከላይ ተያይዟል 👇", reply_markup=channel_markup)
                 user_albums.pop(group_id, None)
             
             bot.send_message(chat_id, "✅ ማስታወቂያው ወደ ቻናል ተልኳል!", reply_markup=get_main_keyboard())
@@ -238,10 +239,13 @@ def callback_query(call):
                         else:
                             media_group.append(InputMediaPhoto(msg.photo[-1].file_id))
                     
-                    # 💡 ማስታወሻ: ቴሌግራም በአልበም (Media Group) ላይ በቀጥታ ቁልፎችን ማያያዝ ስለማይፈቅድ፣
-                    # ቁልፎቹ ከታች እንዲታዩ ከፈለጉ ጽሁፉ ከጠፋ በኋላ ቁልፎቹ የሚወጡበት የተለየ አሰራር መጠቀም ያስፈልጋል።
-                    # በአሁኑ ሰዓት ግን ያ የጽሁፍ መልዕክት ሙሉ በሙሉ ጠፍቷል።
+                    channel_markup = InlineKeyboardMarkup()
+                    channel_markup.add(InlineKeyboardButton("🛒 እቃ ለመግዛት", url=ADMIN_USERNAME), InlineKeyboardButton("💸 እቃ ለመሸጥ", url=SELL_ACCOUNT_LINK))
+                    channel_markup.add(InlineKeyboardButton("📞 ስልክ 0985427286", url=ADMIN_PHONE_LINK))
+                    
                     bot.send_media_group(CHANNEL_USERNAME, media_group)
+                    # አልበም በሚለጠፍበት ሰዓት ያንን አላስፈላጊ ጽሁፍ አጥፍተን ቁልፎቹን ብቻ ከስር እንልካለን
+                    bot.send_message(CHANNEL_USERNAME, "👇", reply_markup=channel_markup)
                     user_albums.pop(group_id, None)
                     
                 bot.answer_callback_query(call.id, "✅ አልበሙ ተለጥፏል!")
