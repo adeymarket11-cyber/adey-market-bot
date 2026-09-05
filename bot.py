@@ -81,12 +81,11 @@ def handle_text(message):
                 media_group = []
                 for idx, msg in enumerate(user_albums[group_id]['messages']):
                     if idx == 0:
-                        media_group.append(InputMediaPhoto(msg.photo[-1].file_id, caption=new_caption))
+                        media_group.append(InputMediaPhoto(msg.photo[-1].file_id, caption=new_caption, reply_markup=channel_markup))
                     else:
                         media_group.append(InputMediaPhoto(msg.photo[-1].file_id))
                 
                 bot.send_media_group(CHANNEL_USERNAME, media_group)
-                bot.send_message(CHANNEL_USERNAME reply_markup=channel_markup)
                 user_albums.pop(group_id, None)
             
             bot.send_message(chat_id, "✅ ማስታወቂያው ወደ ቻናል ተልኳል!", reply_markup=get_main_keyboard())
@@ -238,12 +237,7 @@ def callback_query(call):
                         else:
                             media_group.append(InputMediaPhoto(msg.photo[-1].file_id))
                     
-                    channel_markup = InlineKeyboardMarkup()
-                    channel_markup.add(InlineKeyboardButton("🛒 እቃ ለመግዛት", url=ADMIN_USERNAME), InlineKeyboardButton("💸 እቃ ለመሸጥ", url=SELL_ACCOUNT_LINK))
-                    channel_markup.add(InlineKeyboardButton("📞 ስልክ 0985427286", url=ADMIN_PHONE_LINK))
-                    
                     bot.send_media_group(CHANNEL_USERNAME, media_group)
-                    bot.send_message(CHANNEL_USERNAME, "👇 ለግዢ እና ሽያጭ ከታች ያሉትን ሊንኮች ይጠቀሙ:", reply_markup=channel_markup)
                     user_albums.pop(group_id, None)
                     
                 bot.answer_callback_query(call.id, "✅ አልበሙ ተለጥፏል!")
