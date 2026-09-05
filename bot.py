@@ -86,8 +86,8 @@ def handle_text(message):
                         media_group.append(InputMediaPhoto(msg.photo[-1].file_id))
                 
                 bot.send_media_group(CHANNEL_USERNAME, media_group)
-                # አልበሙ ከተላከ በኋላ ያለ ጽሁፍ ቁልፎቹን ብቻ መላክ (ቴሌግራም ላይ አልበም ላይ ቁልፍ በቀጥታ አይሰቀልም)
-                bot.send_message(CHANNEL_USERNAME, "የእቃው ዝርዝር ከላይ ተያይዟል 👇", reply_markup=channel_markup)
+                # ምንም ጽሁፍ ወይም ኢሞጂ ሳይኖር ቁልፎቹን ብቻ መላክ
+                bot.send_message(CHANNEL_USERNAME, ".", reply_markup=channel_markup)
                 user_albums.pop(group_id, None)
             
             bot.send_message(chat_id, "✅ ማስታወቂያው ወደ ቻናል ተልኳል!", reply_markup=get_main_keyboard())
@@ -244,8 +244,8 @@ def callback_query(call):
                     channel_markup.add(InlineKeyboardButton("📞 ስልክ 0985427286", url=ADMIN_PHONE_LINK))
                     
                     bot.send_media_group(CHANNEL_USERNAME, media_group)
-                    # አልበም በሚለጠፍበት ሰዓት ያንን አላስፈላጊ ጽሁፍ አጥፍተን ቁልፎቹን ብቻ ከስር እንልካለን
-                    bot.send_message(CHANNEL_USERNAME, "👇", reply_markup=channel_markup)
+                    # ምንም አይነት ጽሁፍ ወይም ኢሞጂ ሳያስገባ ነጥብ ብቻ በመጠቀም ቁልፎቹን ከስር ማያያዝ (ቴሌግራም ባዶ መልዕክት ስለማይፈቅድ '.' ይደረጋል)
+                    bot.send_message(CHANNEL_USERNAME, ".", reply_markup=channel_markup)
                     user_albums.pop(group_id, None)
                     
                 bot.answer_callback_query(call.id, "✅ አልበሙ ተለጥፏል!")
