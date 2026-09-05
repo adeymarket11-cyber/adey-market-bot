@@ -86,8 +86,8 @@ def handle_text(message):
                         media_group.append(InputMediaPhoto(msg.photo[-1].file_id))
                 
                 bot.send_media_group(CHANNEL_USERNAME, media_group)
-                # ምንም ጽሁፍ እንዳይታይ የማይታይ ባዶ ክፍተት (Invisible Space) መጠቀም
-                bot.send_message(CHANNEL_USERNAME, "\u200b", reply_markup=channel_markup)
+                # አልበሙ ከተላከ በኋላ ቁልፎቹን በንጽህና ከስር እንዲቀመጡ መላክ
+                bot.send_message(CHANNEL_USERNAME, "ለግዢ እና ሽያጭ ከታች ያሉትን ሊንኮች ይጠቀሙ 👇", reply_markup=channel_markup)
                 user_albums.pop(group_id, None)
             
             bot.send_message(chat_id, "✅ ማስታወቂያው ወደ ቻናል ተልኳል!", reply_markup=get_main_keyboard())
@@ -244,8 +244,8 @@ def callback_query(call):
                     channel_markup.add(InlineKeyboardButton("📞 ስልክ 0985427286", url=ADMIN_PHONE_LINK))
                     
                     bot.send_media_group(CHANNEL_USERNAME, media_group)
-                    # ምንም ጽሁፍ ወይም ነጥብ ሳይታይ የማይታይ ክፍተት በመጠቀም ቁልፎቹን ከስር ማያያዝ
-                    bot.send_message(CHANNEL_USERNAME, "\u200b", reply_markup=channel_markup)
+                    # አልበሙ ሲለጠፍ ቁልፎቹ ከስር እንዲመጡ ማድረግ
+                    bot.send_message(CHANNEL_USERNAME, "ለግዢ እና ሽያጭ ከታች ያሉትን ሊንኮች ይጠቀሙ 👇", reply_markup=channel_markup)
                     user_albums.pop(group_id, None)
                     
                 bot.answer_callback_query(call.id, "✅ አልበሙ ተለጥፏል!")
