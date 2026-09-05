@@ -231,9 +231,13 @@ def callback_query(call):
             try:
                 if group_id in user_albums:
                     media_group = []
+                    channel_markup = InlineKeyboardMarkup()
+                    channel_markup.add(InlineKeyboardButton("🛒 እቃ ለመግዛት", url=ADMIN_USERNAME), InlineKeyboardButton("💸 እቃ ለመሸጥ", url=SELL_ACCOUNT_LINK))
+                    channel_markup.add(InlineKeyboardButton("📞 ስልክ 0985427286", url=ADMIN_PHONE_LINK))
+
                     for idx, msg in enumerate(user_albums[group_id]['messages']):
                         if idx == 0:
-                            media_group.append(InputMediaPhoto(msg.photo[-1].file_id, caption=msg.caption if msg.caption else ""))
+                            media_group.append(InputMediaPhoto(msg.photo[-1].file_id, caption=msg.caption if msg.caption else "", reply_markup=channel_markup))
                         else:
                             media_group.append(InputMediaPhoto(msg.photo[-1].file_id))
                     
