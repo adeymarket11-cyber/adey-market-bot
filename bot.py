@@ -30,7 +30,7 @@ TOKEN = "8780198432:AAFcQyfiyo8q1AtXbNS_XYt8ufHwXIFjyyA"
 bot = telebot.TeleBot(TOKEN)
 
 ADMIN_CHAT_ID = "8703011579"
-CHANNEL_USERNAME = "marakiused3"
+CHANNEL_USERNAME = "@marakiused3"
 
 BOT_LINK = "https://t.me/Adey_used_bot"
 ADMIN_USERNAME = "https://t.me/adeyused"
