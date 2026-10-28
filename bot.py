@@ -73,7 +73,6 @@ def show_menu(message):
 
 
 # ===== ADMIN POSTING COMMANDS =====
-# አድሚኑ እቃዎችን በቀጥታ ወደየራሳቸው ቻናል ለመልቀቅ እነዚህን ትዕዛዞች ይጠቀማል
 
 @bot.message_handler(commands=["postbed", "postwashing", "postfridge", "postsofa", "posttv", "postwardrobe"])
 def handle_posting(message):
@@ -81,7 +80,6 @@ def handle_posting(message):
         bot.reply_to(message, "ይህን ትእዛዝ አድሚኑ ብቻ መጠቀም ይችላል።")
         return
 
-    # የትእዛዙን አይነት በመለየት ተስማሚውን ቻናል እንመርጣለን
     command = message.text.split()[0].replace("/", "")
     cat_key = command.replace("post", "")
     
@@ -91,7 +89,6 @@ def handle_posting(message):
         bot.reply_to(message, "ትክክለኛ ቻናል አልተገኘም።")
         return
 
-    # አድሚኑ የላከውን ፎቶ ወይም ጽሁፍ ወደ ቻናሉ እናስተላልፋለን
     try:
         if message.reply_to_message:
             bot.copy_message(target_channel, message.chat.id, message.reply_to_message.message_id)
@@ -124,4 +121,5 @@ if __name__ == "__main__":
     threading.Thread(target=run_web_server, daemon=True).start()
 
     print("ADEY MARKET Bot is running...")
+    # ግጭትን ለማስወገድ skip_pending=True እናስገባለን
     bot.infinity_polling(skip_pending=True)
