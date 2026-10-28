@@ -9,7 +9,6 @@ ADMIN_ID = "8703011579"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# የሰጡዋቸውን አዳዲስ ትክክለኛ ቻናል ሊንኮች ጨምሮ የተስተካከለ መዋቅር
 CATEGORY_CHANNELS = {
     "bed": ("🛏️ አልጋ", "@adey_market_bed"),
     "washing": ("🧺 Washing Machine", "@adey_market_washingmachine"),
@@ -85,9 +84,11 @@ def callback_post_handler(call):
     try:
         if call.message.reply_to_message:
             bot.copy_message(target_channel, call.message.chat.id, call.message.reply_to_message.message_id)
+            # Markdown ሳንጠቀም በቀጥታ ጽሁፉን እንልካለን (ግጭት እንዳይፈጥር)
             bot.edit_message_text(
-                f"✅ እቃው በትክክል ወደ **{cat_name}** ({target_channel}) ቻናል ተልኳል!",
-                call.message.chat.id, call.message.message_id, parse_mode="Markdown"
+                f"✅ እቃው በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!",
+                call.message.chat.id, 
+                call.message.message_id
             )
         else:
             bot.answer_callback_query(call.id, "እባክዎ ፎቶውን ሪፕሊ በማድረግ እንደገና ይሞክሩ።", show_alert=True)
