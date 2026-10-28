@@ -9,7 +9,7 @@ ADMIN_ID = "8703011579"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# አዳዲስ ምድቦችን ጨምሮ የተስተካከሉ ቻናሎች (ለቀጣይ ቻናሎች የራሳቸውን ሊንክ መቀየር ይችላሉ)
+# የሰጡዋቸውን አዳዲስ ትክክለኛ ቻናል ሊንኮች ጨምሮ የተስተካከለ መዋቅር
 CATEGORY_CHANNELS = {
     "bed": ("🛏️ አልጋ", "@adey_market_bed"),
     "washing": ("🧺 Washing Machine", "@adey_market_washingmachine"),
@@ -17,9 +17,9 @@ CATEGORY_CHANNELS = {
     "sofa": ("🛋️ ሶፋ", "@adey_market_sofa"),
     "tv": ("📺 TV / ቲቪ ስታንድ", "@adey_market_Tv"),
     "wardrobe": ("🚪 ቁምሳጥን", "@adey_market_Wardrobe"),
-    "dining": ("🍽️ የምግብ ጠረቤዛ", "@adey_market_bed"),
-    "furniture": ("🪑 ፈርኒቸር", "@adey_market_sofa"),
-    "extra": ("✨ ተጨማሪ", "@adey_market_Refrigerator"),
+    "dining": ("🍽️ የምግብ ጠረቤዛ", "@adey_market_dining_table"),
+    "furniture": ("🪑 ፈርኒቸር", "@adey_market_furniture"),
+    "extra": ("✨ ተጨማሪ", "@adey_market_other"),
 }
 
 CATEGORIES = [
@@ -29,9 +29,9 @@ CATEGORIES = [
     ("🛋️ ሶፋ", "https://t.me/adey_market_sofa"),
     ("📺 TV / ቲቪ ስታንድ", "https://t.me/adey_market_Tv"),
     ("🚪 ቁምሳጥን", "https://t.me/adey_market_Wardrobe"),
-    ("🍽️ የምግብ ጠረቤዛ", "https://t.me/adey_market_bed"),
-    ("🪑 ፈርኒቸር", "https://t.me/adey_market_sofa"),
-    ("✨ ተጨማሪ", "https://t.me/adey_market_Refrigerator"),
+    ("🍽️ የምግብ ጠረቤዛ", "https://t.me/adey_market_dining_table"),
+    ("🪑 ፈርኒቸር", "https://t.me/adey_market_furniture"),
+    ("✨ ተጨማሪ", "https://t.me/adey_market_other"),
 ]
 
 def make_menu():
@@ -42,7 +42,6 @@ def make_menu():
     markup.add(InlineKeyboardButton("📩 Inbox ለማውራት", url="https://t.me/adeyused"))
     return markup
 
-# ጽሁፉ ጎላ ጎላ እንዲል እና የጠየቁት እንዲስተካከል ተደርጓል
 MENU_TEXT = (
     "🟡 **ADEY MARKET** 🏠\n\n"
     "ያገለገሉ የቤት እቃዎችን ከታች ይምረጡ።\n\n"
