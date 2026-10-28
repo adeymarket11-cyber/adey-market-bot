@@ -8,9 +8,9 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # ===== ADEY MARKET SETTINGS =====
 
-BOT_TOKEN = "8780198432:AAH6rW5MiW2nP9HMZ67IqyUOKmDjGPrGYQk"
+# አዲሱ እና ትክክለኛው የቦት ቶከን
+BOT_TOKEN = "8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk"
 
-# የቻናልዎ መታወቂያ ወይም ዩዘርኔም (በ '@' ሊጀምር ይችላል)
 CHANNEL_ID = "@adeymarket3"
 ADMIN_ID = "8703011579"
 
