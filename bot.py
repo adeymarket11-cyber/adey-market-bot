@@ -9,13 +9,22 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 # ===== ADEY MARKET SETTINGS =====
 
 BOT_TOKEN = "8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk"
-CHANNEL_ID = "@adeymarket3"
 ADMIN_ID = "8703011579"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
 
-# አዲስ የተዘጋጁ ለእያንዳንዱ እቃ የተለዩ የቴሌግራም ቻናል ሊንኮች
+# ለእያንዳንዱ እቃ የተለዩ የቴሌግራም ቻናሎች (ለፖስቲንግ አገልግሎት)
+CATEGORY_CHANNELS = {
+    "bed": "@adey_market_bed",
+    "washing": "@adey_market_washingmachine",
+    "fridge": "@adey_market_Refrigerator",
+    "sofa": "@adey_market_sofa",
+    "tv": "@adey_market_Tv",
+    "wardrobe": "@adey_market_Wardrobe",
+}
+
+# ለሜኑ ቁልፎች የሚያገለግሉ ሊንኮች
 CATEGORIES = [
     ("🛏️ አልጋ", "https://t.me/adey_market_bed"),
     ("🧺 Washing Machine", "https://t.me/adey_market_washingmachine"),
@@ -28,7 +37,6 @@ CATEGORIES = [
 
 def make_menu():
     markup = InlineKeyboardMarkup(row_width=2)
-
     buttons = [InlineKeyboardButton(name, url=url) for name, url in CATEGORIES]
     
     for i in range(0, len(buttons), 2):
@@ -40,7 +48,6 @@ def make_menu():
             url="https://t.me/adeyused"
         )
     )
-
     return markup
 
 
@@ -65,23 +72,32 @@ def show_menu(message):
     )
 
 
-@bot.message_handler(commands=["publishmenu"])
-def publish_menu(message):
+# ===== ADMIN POSTING COMMANDS =====
+# አድሚኑ እቃዎችን በቀጥታ ወደየራሳቸው ቻናል ለመልቀቅ እነዚህን ትዕዛዞች ይጠቀማል
+
+@bot.message_handler(commands=["postbed", "postwashing", "postfridge", "postsofa", "posttv", "postwardrobe"])
+def handle_posting(message):
     if not ADMIN_ID or str(message.from_user.id) != str(ADMIN_ID):
         bot.reply_to(message, "ይህን ትእዛዝ አድሚኑ ብቻ መጠቀም ይችላል።")
         return
 
-    if not CHANNEL_ID:
-        bot.reply_to(message, "CHANNEL_ID አልተዘጋጀም።")
+    # የትእዛዙን አይነት በመለየት ተስማሚውን ቻናል እንመርጣለን
+    command = message.text.split()[0].replace("/", "")
+    cat_key = command.replace("post", "")
+    
+    target_channel = CATEGORY_CHANNELS.get(cat_key)
+    
+    if not target_channel:
+        bot.reply_to(message, "ትክክለኛ ቻናል አልተገኘም።")
         return
 
+    # አድሚኑ የላከውን ፎቶ ወይም ጽሁፍ ወደ ቻናሉ እናስተላልፋለን
     try:
-        bot.send_message(
-            CHANNEL_ID,
-            MENU_TEXT,
-            reply_markup=make_menu()
-        )
-        bot.reply_to(message, "የADEY MARKET ሜኑ ወደ Channel ተልኳል።")
+        if message.reply_to_message:
+            bot.copy_message(target_channel, message.chat.id, message.reply_to_message.message_id)
+            bot.reply_to(message, f"እቃው በትክክል ወደ {target_channel} ተልኳል!")
+        else:
+            bot.reply_to(message, "እባክዎ መለጠፍ የሚፈልጉትን ፎቶ/መረጃ (Caption ጋር) Reply በማድረግ ትዕዛዙን ይጻፉ።")
     except Exception as e:
         bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
