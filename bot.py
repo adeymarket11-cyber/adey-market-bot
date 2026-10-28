@@ -18,8 +18,7 @@ if not BOT_TOKEN:
 bot = telebot.TeleBot(BOT_TOKEN)
 
 
-# ማስታወሻ፡ BED_URL, WASHING_MACHINE_URL ወዘተ የሚሉትን በትክክለኛ የቴሌግራም ቻናልዎ ፖስት ሊንክ ወይም ዌብሳይት ይተኩ።
-# ምሳሌ፡ "https://t.me/adeyused/123"
+# የቴሌግራም ቻናልዎ ትክክለኛ የፖስት ሊንኮች እዚህ ይገባሉ (ምሳሌ፦ "https://t.me/adeyused/15")
 CATEGORIES = [
     ("🛏️ አልጋ", "https://t.me/adeyused"),
     ("🧺 Washing Machine", "https://t.me/adeyused"),
@@ -36,11 +35,10 @@ def make_menu():
     # አዝራሮቹን በሁለት በሁለት ረድፍ ለማደራጀት
     buttons = [InlineKeyboardButton(name, url=url) for name, url in CATEGORIES]
     
-    # 2 በ 2 ማደራጀት
     for i in range(0, len(buttons), 2):
         markup.add(*buttons[i:i+2])
 
-    # የInbox አዝራር በብቸኝነት ከታች እንዲሆን
+    # የInbox አዝራር ከታች እንዲሆን
     markup.add(
         InlineKeyboardButton(
             "📩 Inbox ለማውራት",
@@ -72,10 +70,8 @@ def show_menu(message):
     )
 
 
-# Publish a menu post to your channel.
 @bot.message_handler(commands=["publishmenu"])
 def publish_menu(message):
-    # ADMIN_ID በትክክል መሰጠቱን ማረጋገጥ
     if not ADMIN_ID or str(message.from_user.id) != str(ADMIN_ID):
         bot.reply_to(message, "ይህን ትእዛዝ አድሚኑ ብቻ መጠቀም ይችላል።")
         return
@@ -114,7 +110,6 @@ def run_web_server():
 
 
 if __name__ == "__main__":
-    # Web server በጀርባ እንዲሰራ ማድረግ
     threading.Thread(target=run_web_server, daemon=True).start()
 
     print("ADEY MARKET Bot is running...")
