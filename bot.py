@@ -8,23 +8,21 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # ===== ADEY MARKET SETTINGS =====
 
-# አዲሱ እና ትክክለኛው የቦት ቶከን
 BOT_TOKEN = "8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk"
-
 CHANNEL_ID = "@adeymarket3"
 ADMIN_ID = "8703011579"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
 
-# የቴሌግራም ቻናልዎ ትክክለኛ የፖስት ሊንኮች እዚህ ይገባሉ
+# አዲስ የተዘጋጁ ለእያንዳንዱ እቃ የተለዩ የቴሌግራም ቻናል ሊንኮች
 CATEGORIES = [
-    ("🛏️ አልጋ", "https://t.me/adeyused"),
-    ("🧺 Washing Machine", "https://t.me/adeyused"),
-    ("🧊 ፍሪጅ", "https://t.me/adeyused"),
-    ("🛋️ ሶፋ", "https://t.me/adeyused"),
-    ("📺 TV", "https://t.me/adeyused"),
-    ("🚪 ቁምሳጥን", "https://t.me/adeyused"),
+    ("🛏️ አልጋ", "https://t.me/adey_market_bed"),
+    ("🧺 Washing Machine", "https://t.me/adey_market_washingmachine"),
+    ("🧊 ፍሪጅ", "https://t.me/adey_market_Refrigerator"),
+    ("🛋️ ሶፋ", "https://t.me/adey_market_sofa"),
+    ("📺 TV", "https://t.me/adey_market_Tv"),
+    ("🚪 ቁምሳጥን", "https://t.me/adey_market_Wardrobe"),
 ]
 
 
