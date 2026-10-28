@@ -9,13 +9,17 @@ ADMIN_ID = "8703011579"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
+# አዳዲስ ምድቦችን ጨምሮ የተስተካከሉ ቻናሎች (ለቀጣይ ቻናሎች የራሳቸውን ሊንክ መቀየር ይችላሉ)
 CATEGORY_CHANNELS = {
     "bed": ("🛏️ አልጋ", "@adey_market_bed"),
     "washing": ("🧺 Washing Machine", "@adey_market_washingmachine"),
     "fridge": ("🧊 ፍሪጅ", "@adey_market_Refrigerator"),
     "sofa": ("🛋️ ሶፋ", "@adey_market_sofa"),
-    "tv": ("📺 TV", "@adey_market_Tv"),
+    "tv": ("📺 TV / ቲቪ ስታንድ", "@adey_market_Tv"),
     "wardrobe": ("🚪 ቁምሳጥን", "@adey_market_Wardrobe"),
+    "dining": ("🍽️ የምግብ ጠረቤዛ", "@adey_market_bed"),
+    "furniture": ("🪑 ፈርኒቸር", "@adey_market_sofa"),
+    "extra": ("✨ ተጨማሪ", "@adey_market_Refrigerator"),
 }
 
 CATEGORIES = [
@@ -23,8 +27,11 @@ CATEGORIES = [
     ("🧺 Washing Machine", "https://t.me/adey_market_washingmachine"),
     ("🧊 ፍሪጅ", "https://t.me/adey_market_Refrigerator"),
     ("🛋️ ሶፋ", "https://t.me/adey_market_sofa"),
-    ("📺 TV", "https://t.me/adey_market_Tv"),
+    ("📺 TV / ቲቪ ስታንድ", "https://t.me/adey_market_Tv"),
     ("🚪 ቁምሳጥን", "https://t.me/adey_market_Wardrobe"),
+    ("🍽️ የምግብ ጠረቤዛ", "https://t.me/adey_market_bed"),
+    ("🪑 ፈርኒቸር", "https://t.me/adey_market_sofa"),
+    ("✨ ተጨማሪ", "https://t.me/adey_market_Refrigerator"),
 ]
 
 def make_menu():
@@ -35,18 +42,18 @@ def make_menu():
     markup.add(InlineKeyboardButton("📩 Inbox ለማውራት", url="https://t.me/adeyused"))
     return markup
 
+# ጽሁፉ ጎላ ጎላ እንዲል እና የጠየቁት እንዲስተካከል ተደርጓል
 MENU_TEXT = (
-    "🟡 ADEY MARKET 🏠\n\n"
+    "🟡 **ADEY MARKET** 🏠\n\n"
     "ያገለገሉ የቤት እቃዎችን ከታች ይምረጡ።\n\n"
-    "👇 የሚፈልጉትን ምድብ ይንኩ።\n\n"
-    "📞 ስልክ: 0985427286\n"
-    "📩 Telegram Inbox: @adeyused\n\n"
-    "🤝 ሻጭን ከገዢ እናገናኛለን!"
+    "👇 **የሚፈልጉትን ምድብ ይንኩ።**\n\n"
+    "📞 **ስልክ:** 0985427286\n"
+    "📩 **Telegram Inbox:** @adeyused"
 )
 
 @bot.message_handler(commands=["start", "menu"])
 def show_menu(message):
-    bot.send_message(message.chat.id, MENU_TEXT, reply_markup=make_menu())
+    bot.send_message(message.chat.id, MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
 
 @bot.message_handler(content_types=['photo', 'video'])
 def handle_admin_upload(message):
@@ -61,7 +68,7 @@ def handle_admin_upload(message):
     for i in range(0, len(buttons), 2):
         markup.add(*buttons[i:i+2])
 
-    bot.reply_to(message, "📦 ይህንን እቃ የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?", reply_markup=markup)
+    bot.reply_to(message, "📦 **ይህን እቃ የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?**", parse_mode="Markdown", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("post_"))
 def callback_post_handler(call):
