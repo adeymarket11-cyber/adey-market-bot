@@ -118,4 +118,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_web_server, daemon=True).start()
 
     print("ADEY MARKET Bot is running...")
-    bot.infinity_polling(skip_pending=True
+    bot.infinity_polling(skip_pending=True)
