@@ -14,14 +14,14 @@ ADMIN_ID = "8703011579"
 bot = telebot.TeleBot(BOT_TOKEN)
 
 
-# ለእያንዳንዱ እቃ የተለዩ የቴሌግራም ቻናሎች (ለፖስቲንግ አገልግሎት)
+# ለእያንዳንዱ እቃ የተለዩ የቴሌግራም ቻናሎች
 CATEGORY_CHANNELS = {
-    "bed": "@adey_market_bed",
-    "washing": "@adey_market_washingmachine",
-    "fridge": "@adey_market_Refrigerator",
-    "sofa": "@adey_market_sofa",
-    "tv": "@adey_market_Tv",
-    "wardrobe": "@adey_market_Wardrobe",
+    "bed": ("🛏️ አልጋ", "@adey_market_bed"),
+    "washing": ("🧺 Washing Machine", "@adey_market_washingmachine"),
+    "fridge": ("🧊 ፍሪጅ", "@adey_market_Refrigerator"),
+    "sofa": ("🛋️ ሶፋ", "@adey_market_sofa"),
+    "tv": ("📺 TV", "@adey_market_Tv"),
+    "wardrobe": ("🚪 ቁምሳጥን", "@adey_market_Wardrobe"),
 }
 
 # ለሜኑ ቁልፎች የሚያገለግሉ ሊንኮች
@@ -72,31 +72,63 @@ def show_menu(message):
     )
 
 
-# ===== ADMIN POSTING COMMANDS =====
+# ===== SMART ADMIN POSTING (አድሚኑ ፎቶ ሲልክ ምርጫ የሚያሳይ) =====
 
-@bot.message_handler(commands=["postbed", "postwashing", "postfridge", "postsofa", "posttv", "postwardrobe"])
-def handle_posting(message):
+@bot.message_handler(content_types=['photo', 'video', 'text'])
+def handle_admin_upload(message):
+    # አድሚኑ ብቻ መሆኑን እናረጋግጣለን (በግል ቻት ውስጥ ሲልክ)
     if not ADMIN_ID or str(message.from_user.id) != str(ADMIN_ID):
-        bot.reply_to(message, "ይህን ትእዛዝ አድሚኑ ብቻ መጠቀም ይችላል።")
         return
 
-    command = message.text.split()[0].replace("/", "")
-    cat_key = command.replace("post", "")
-    
-    target_channel = CATEGORY_CHANNELS.get(cat_key)
-    
-    if not target_channel:
-        bot.reply_to(message, "ትክክለኛ ቻናል አልተገኘም።")
+    # አድሚኑ ፎቶ ወይም ቪዲዮ ሲልክ ቦቱ የትኛውን ቻናል እንደሚመርጥ ቁልፎችን ያሳያል
+    if message.content_type in ['photo', 'video']:
+        markup = InlineKeyboardMarkup(row_width=2)
+        
+        # ለእያንዳንዱ ምድብ አዝራር እንፈጥራለን (callback_data ውስጥ የቻናሉ ቁልፍ ይያዛል)
+        buttons = []
+        for key, (name, _) in CATEGORY_CHANNELS.items():
+            buttons.append(InlineKeyboardButton(name, callback_data=f"post_{key}"))
+            
+        for i in range(0, len(buttons), 2):
+            markup.add(*buttons[i:i+2])
+
+        bot.reply_to(
+            message,
+            "📦 ይህንን እቃ የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?",
+            reply_markup=markup
+        )
+
+
+# አድሚኑ ከቀረቡት ቁልፎች ውስጥ አንዱን ሲጫን የሚሰራ
+@bot.callback_query_handler(func=lambda call: call.data.startswith("post_"))
+def callback_post_handler(call):
+    if not ADMIN_ID or str(call.from_user.id) != str(ADMIN_ID):
+        bot.answer_callback_query(call.id, "ይህን ማድረግ የሚችለው አድሚኑ ብቻ ነው!")
         return
+
+    cat_key = call.data.replace("post_", "")
+    channel_info = CATEGORY_CHANNELS.get(cat_key)
+    
+    if not channel_info:
+        bot.answer_callback_query(call.id, "ቻናል አልተገኘም!")
+        return
+
+    cat_name, target_channel = channel_info
 
     try:
-        if message.reply_to_message:
-            bot.copy_message(target_channel, message.chat.id, message.reply_to_message.message_id)
-            bot.reply_to(message, f"እቃው በትክክል ወደ {target_channel} ተልኳል!")
+        # የተላከውን ፎቶ/መረጃ ወደ ተመረጠው ቻናል ኮፒ ያደርጋል
+        if call.message.reply_to_message:
+            bot.copy_message(target_channel, call.message.chat.id, call.message.reply_to_message.message_id)
+            bot.edit_message_text(
+                f"✅ እቃው በትክክል ወደ **{cat_name}** ({target_channel}) ቻናል ተልኳል!",
+                call.message.chat.id,
+                call.message.message_id,
+                parse_mode="Markdown"
+            )
         else:
-            bot.reply_to(message, "እባክዎ መለጠፍ የሚፈልጉትን ፎቶ/መረጃ (Caption ጋር) Reply በማድረግ ትዕዛዙን ይጻፉ።")
+            bot.answer_callback_query(call.id, "የመጀመሪያው ፎቶ ጠፍቷል እባክዎ እንደገና ይሞክሩ።", show_alert=True)
     except Exception as e:
-        bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
+        bot.answer_callback_query(call.id, f"ስህተት ተፈጥሯል: {e}", show_alert=True)
 
 
 # ===== RENDER HEALTH CHECK =====
@@ -121,5 +153,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_web_server, daemon=True).start()
 
     print("ADEY MARKET Bot is running...")
-    # ግጭትን ለማስወገድ skip_pending=True እናስገባለን
     bot.infinity_polling(skip_pending=True)
