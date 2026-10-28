@@ -51,10 +51,13 @@ MENU_TEXT = (
 
 @bot.message_handler(commands=["start", "menu"])
 def show_menu(message):
+    # ሰዎችን መገደብ ከፈለጉ (አድሚን ብቻ እንዲከፍተው ከፈለጉ ይህንን ማብራት ይቻላል)
+    # አሁን ግን ገዢዎች ማየት እንዲችሉ ሁሉም ሰው ጋር ሜኑ ይመጣል
     bot.send_message(message.chat.id, MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
 
 @bot.message_handler(content_types=['photo', 'video'])
 def handle_admin_upload(message):
+    # እቃዎችን መላክ እና ፖስት ማድረግ የሚችለው አድሚኑ ብቻ ነው (ሌላ ሰው ቢልክ ቦቱ ምንም አያደርግም)
     if not ADMIN_ID or str(message.from_user.id) != str(ADMIN_ID):
         return
 
@@ -84,7 +87,6 @@ def callback_post_handler(call):
     try:
         if call.message.reply_to_message:
             bot.copy_message(target_channel, call.message.chat.id, call.message.reply_to_message.message_id)
-            # Markdown ሳንጠቀም በቀጥታ ጽሁፉን እንልካለን (ግጭት እንዳይፈጥር)
             bot.edit_message_text(
                 f"✅ እቃው በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!",
                 call.message.chat.id, 
