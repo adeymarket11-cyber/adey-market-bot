@@ -9,7 +9,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 # ===== ADEY MARKET SETTINGS =====
 
 BOT_TOKEN = os.getenv("8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk")
-CHANNEL_ID = os.getenv("@adeymark")
+CHANNEL_ID = os.getenv("@adeymarket3")
 ADMIN_ID = os.getenv("870301157")
 
 if not BOT_TOKEN:
