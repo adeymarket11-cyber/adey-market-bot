@@ -8,17 +8,16 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # ===== ADEY MARKET SETTINGS =====
 
-BOT_TOKEN = os.getenv("8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk")
-CHANNEL_ID = os.getenv("@adeymarket3")
-ADMIN_ID = os.getenv("870301157")
+BOT_TOKEN = "8780198432:AAH6rW5MiW2nP9HMZ67IqyUOKmDjGPrGYQk"
 
-if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN is missing in Render Environment Variables")
+# የቻናልዎ መታወቂያ ወይም ዩዘርኔም (በ '@' ሊጀምር ይችላል)
+CHANNEL_ID = "@adeymarket3"
+ADMIN_ID = "8703011579"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
 
-# የቴሌግራም ቻናልዎ ትክክለኛ የፖስት ሊንኮች እዚህ ይገባሉ (ምሳሌ፦ "https://t.me/adeyused/15")
+# የቴሌግራም ቻናልዎ ትክክለኛ የፖስት ሊንኮች እዚህ ይገባሉ
 CATEGORIES = [
     ("🛏️ አልጋ", "https://t.me/adeyused"),
     ("🧺 Washing Machine", "https://t.me/adeyused"),
@@ -32,13 +31,11 @@ CATEGORIES = [
 def make_menu():
     markup = InlineKeyboardMarkup(row_width=2)
 
-    # አዝራሮቹን በሁለት በሁለት ረድፍ ለማደራጀት
     buttons = [InlineKeyboardButton(name, url=url) for name, url in CATEGORIES]
     
     for i in range(0, len(buttons), 2):
         markup.add(*buttons[i:i+2])
 
-    # የInbox አዝራር ከታች እንዲሆን
     markup.add(
         InlineKeyboardButton(
             "📩 Inbox ለማውራት",
@@ -77,7 +74,7 @@ def publish_menu(message):
         return
 
     if not CHANNEL_ID:
-        bot.reply_to(message, "CHANNEL_ID በRender ላይ አልተዘጋጀም።")
+        bot.reply_to(message, "CHANNEL_ID አልተዘጋጀም።")
         return
 
     try:
