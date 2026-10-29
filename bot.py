@@ -136,15 +136,38 @@ def callback_condition(call):
     
     if call.from_user.id in admin_sessions:
         admin_sessions[call.from_user.id]["condition"] = cond_map.get(cond, cond)
-        admin_sessions[call.from_user.id]["step"] = "waiting_price"
+        cat_key = admin_sessions[call.from_user.id]["cat_key"]
         
-        bot.edit_message_text(
-            "📝 **አሁን የእቃውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n"
-            "*(ምሳሌ: 55000 ብር | ሣር ቤት)*", 
-            call.message.chat.id, 
-            call.message.message_id, 
-            parse_mode="Markdown"
-        )
+        # የተመረጠው እቃ TV ከሆነ የኢንች እና ስማርት መሆኑን እንጠይቃለን
+        if cat_key == "tv":
+            admin_sessions[call.from_user.id]["step"] = "waiting_tv_details"
+            bot.edit_message_text(
+                "📺 **የቲቪውን መጠን (Inch) እና ስማርት መሆኑን ይጻፉልኝ**\n\n"
+                "*(ምሳሌ: 43 inch, Smart)*", 
+                call.message.chat.id, 
+                call.message.message_id, 
+                parse_mode="Markdown"
+            )
+        else:
+            admin_sessions[call.from_user.id]["step"] = "waiting_price"
+            bot.edit_message_text(
+                "📝 **አሁን የእቃውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n"
+                "*(ምሳሌ: 15000 ብር | ቦሌ)*", 
+                call.message.chat.id, 
+                call.message.message_id, 
+                parse_mode="Markdown"
+            )
+
+@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_tv_details")
+def handle_tv_details(message):
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return
+
+    user_text = message.text.strip()
+    admin_sessions[message.from_user.id]["tv_details"] = user_text
+    admin_sessions[message.from_user.id]["step"] = "waiting_price"
+    
+    bot.reply_to(message, "📝 **አሁን የቲቪውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 25000 ብር | ፒያሳ)*", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_price")
 def handle_price_location(message):
@@ -169,12 +192,17 @@ def handle_price_location(message):
     cat_key = session["cat_key"]
     identifier = session["identifier"]
     condition = session["condition"]
+    tv_details = session.get("tv_details", "")
     
     cat_name, target_channel = CATEGORY_CHANNELS.get(cat_key, ("✨ ተጨማሪ", "@adey_market_other"))
+
+    # የቲቪ ተጨማሪ ዝርዝር ካለ በቅጹ ውስጥ እንጨምራለን
+    tv_info_line = f"📺 **መጠን/አይነት፦** {tv_details}\n" if cat_key == "tv" and tv_details else ""
 
     caption_text = (
         "🟡 **ADEY MARKET** 🏠\n\n"
         f"📦 **የእቃው አይነት፦** {cat_name}\n"
+        f"{tv_info_line}"
         f"💰 **ዋጋ፦** {price} ብር\n"
         f"📍 **ቦታ፦** {location}\n"
         f"☑ **ሁኔታ፦** {condition}\n"
@@ -198,14 +226,11 @@ def handle_price_location(message):
         
         try:
             if media_list:
-                # 1. ወደየራሱ ምድብ ቻናል መላክ (ለምሳሌ: ፍሪጅ ከሆነ ወደ ፍሪጅ ቻናል)
                 bot.send_media_group(target_channel, media_list)
-                
-                # 2. ወደ ዋናው ቻናል መላክ (የምድብ ቻናሉ እና ዋናው ቻናል የተለያዩ ከሆኑ)
                 if target_channel != MAIN_CHANNEL:
                     bot.send_media_group(MAIN_CHANNEL, media_list)
                 
-                bot.reply_to(message, f"✅ እቃው በትክክል ወደ **{cat_name}** ({target_channel}) እና ወደ ዋናው ቻናል ({MAIN_CHANNEL}) ተልኳል!", parse_mode="Markdown")
+                bot.reply_to(message, f"✅ ቲቪው በትክክል ወደ **{cat_name}** ({target_channel}) እና ዋናው ቻናል ተልኳል!", parse_mode="Markdown")
         except Exception as e:
             bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
