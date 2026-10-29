@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 # ---------------- CONFIGURATION ----------------
-TOKEN = "YOUR_BOT_TOKEN_HERE"  # የቦትዎን ቶክን እዚህ ያስገቡ
+TOKEN = "8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk"  # የቦትዎን ቶክን እዚህ ያስገቡ
 ADMIN_ID = 8703011579         # የእርስዎን Admin Telegram ID
 CHANNEL_ID = "@adeymarket3"    # የመጨረሻው ፖስት የሚሄድበት ቻናል handle ወይም ID
 
