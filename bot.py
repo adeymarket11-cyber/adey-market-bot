@@ -1,14 +1,28 @@
 import os
-import threading
-import time
+import asyncio
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
+from threading import Thread
+from telegram import Update, InputMediaPhoto
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
+# --- 1. የRender ፖርት ችግርን የሚከላከል አጭር ሰርቨር (Dummy Web Server) ---
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Adey Market Bot is running smoothly!")
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), SimpleHandler)
+    server.serve_forever()
+
+# ሰርቨሩን በጀርባ (Background) ማስጀመር
+Thread(target=run_web_server, daemon=True).start()
+
+# --- 2. የቦት ማዋቀሪያ (Configuration) ---
 BOT_TOKEN = "8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk"
 ADMIN_ID = "8703011579"
-
-bot = telebot.TeleBot(BOT_TOKEN)
 
 CATEGORY_CHANNELS = {
     "bed": ("🛏️ አልጋ", "@adey_market_bed"),
@@ -35,12 +49,18 @@ CATEGORIES = [
 ]
 
 def make_menu():
-    markup = InlineKeyboardMarkup(row_width=2)
-    buttons = [InlineKeyboardButton(name, url=url) for name, url in CATEGORIES]
-    for i in range(0, len(buttons), 2):
-        markup.add(*buttons[i:i+2])
-    markup.add(InlineKeyboardButton("📩 Inbox ለማውራት", url="https://t.me/adeyused"))
-    return markup
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    keyboard = []
+    row = []
+    for name, url in CATEGORIES:
+        row.append(InlineKeyboardButton(name, url=url))
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+    keyboard.append([InlineKeyboardButton("📩 Inbox ለማውራት", url="https://t.me/adeyused")])
+    return InlineKeyboardMarkup(keyboard)
 
 MENU_TEXT = (
     "🟡 **ADEY MARKET** 🏠\n\n"
@@ -50,116 +70,103 @@ MENU_TEXT = (
     "📩 **Telegram Inbox:** @adeyused"
 )
 
-@bot.message_handler(commands=["start", "menu"])
-def show_menu(message):
-    bot.send_message(message.chat.id, MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
 
-# ብዙ ፎቶዎችን (Media Groups) ለመሰብሰብ የሚረዳ ማህደር
-pending_albums = {}
+# ፎቶዎችን እና አልበሞችን ለመያዝ
+media_groups = {}
 
-@bot.message_handler(content_types=['photo', 'video'])
-def handle_admin_upload(message):
-    if not ADMIN_ID or str(message.from_user.id) != str(ADMIN_ID):
+async def handle_admin_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not ADMIN_ID or str(update.message.from_user.id) != str(ADMIN_ID):
         return
 
-    markup = InlineKeyboardMarkup(row_width=2)
-    buttons = []
+    message = update.message
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    
+    keyboard = []
+    row = []
     for key, (name, _) in CATEGORY_CHANNELS.items():
-        buttons.append(InlineKeyboardButton(name, callback_data=f"post_{key}"))
-        
-    for i in range(0, len(buttons), 2):
-        markup.add(*buttons[i:i+2])
+        row.append(InlineKeyboardButton(name, callback_data=f"post_{key}"))
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+    markup = InlineKeyboardMarkup(keyboard)
 
-    # ፎቶው በአልበም (Media Group) መልክ የመጣ ከሆነ
     if message.media_group_id:
         gid = message.media_group_id
-        if gid not in pending_albums:
-            pending_albums[gid] = {
-                "messages": [],
-                "target_message": message # አድሚኑ ቁልፉን እንዲነካበት
-            }
-        pending_albums[gid]["messages"].append(message)
+        if gid not in media_groups:
+            media_groups[gid] = {"messages": [], "sent": False}
+        media_groups[gid]["messages"].append(message)
         
-        # የመጀመሪያው ፎቶ ላይ ብቻ የምድብ ምርጫ ቁልፎቹን እንለጥፋለን
-        if len(pending_albums[gid]["messages"]) == 1:
-            bot.reply_to(message, f"📦 **ይህ አልበም (Media Group) የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?**\n(አልበሙ በመሰብሰብ ላይ ነው...) ይጫኑ:", parse_mode="Markdown", reply_markup=markup)
+        # የመጀመሪያው ፎቶ ላይ ብቻ ምረጡ ብሎ መላክ
+        if len(media_groups[gid]["messages"]) == 1:
+            await message.reply_text("📦 **ይህ አልበም (Media Group) የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?**", parse_mode="Markdown", reply_markup=markup)
     else:
-        # ነጠላ ፎቶ ወይም ቪዲዮ ከሆነ
-        bot.reply_to(message, "📦 **ይህን እቃ የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?**", parse_mode="Markdown", reply_markup=markup)
+        await message.reply_text("📦 **ይህን እቃ የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?**", parse_mode="Markdown", reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("post_"))
-def callback_post_handler(call):
-    if not ADMIN_ID or str(call.from_user.id) != str(ADMIN_ID):
-        bot.answer_callback_query(call.id, "ይህን ማድረግ የሚችለው አድሚኑ ብቻ ነው!")
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not ADMIN_ID or str(query.from_user.id) != str(ADMIN_ID):
+        await query.answer("ይህን ማድረግ የሚችለው አድሚኑ ብቻ ነው!", show_alert=True)
         return
 
-    cat_key = call.data.replace("post_", "")
+    await query.answer()
+    data = query.data
+    if not data.startswith("post_"):
+        return
+
+    cat_key = data.replace("post_", "")
     channel_info = CATEGORY_CHANNELS.get(cat_key)
     if not channel_info:
-        bot.answer_callback_query(call.id, "ቻናል አልተገኘም!")
+        await query.edit_message_text("ቻናል አልተገኘም!")
         return
 
     cat_name, target_channel = channel_info
+    reply_msg = query.message.reply_to_message
+
+    if not reply_msg:
+        await query.edit_message_text("እባክዎ መልእክቱን ሪፕሊ በማድረግ እንደገና ይሞክሩ።")
+        return
+
     try:
-        replied_msg = call.message.reply_to_message
-        if replied_msg:
-            # ፎቶው በአልበም (Media Group) መልክ የመጣ መሆኑን ማረጋገጥ
-            if replied_msg.media_group_id and replied_msg.media_group_id in pending_albums:
-                gid = replied_msg.media_group_id
-                album_data = pending_albums.pop(gid, None)
+        # አልበም (Media Group) ከሆነ
+        if reply_msg.media_group_id and reply_msg.media_group_id in media_groups:
+            gid = reply_msg.media_group_id
+            group_data = media_groups.pop(gid, None)
+            
+            if group_data and group_data["messages"]:
+                media_list = []
+                for idx, m in enumerate(group_data["messages"]):
+                    if m.photo:
+                        file_id = m.photo[-1].file_id
+                        caption = m.caption if idx == 0 else ""
+                        media_list.append(InputMediaPhoto(media=file_id, caption=caption, parse_mode="Markdown"))
                 
-                if album_data and album_data["messages"]:
-                    media_group = []
-                    for m in album_data["messages"]:
-                        if m.photo:
-                            file_id = m.photo[-1].file_id
-                            # የመጀመሪያው ፎቶ ላይ ካፕሽን (Caption) ካለው እንይዛለን
-                            caption = m.caption if m == album_data["messages"][0] else ""
-                            media_group.append(InputMediaPhoto(file_id, caption=caption, parse_mode="Markdown"))
-                    
-                    if media_group:
-                        bot.send_media_group(target_channel, media_group)
-                        bot.edit_message_text(
-                            f"✅ አልበሙ (Media Group) በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!",
-                            call.message.chat.id, 
-                            call.message.message_id
-                        )
-                    else:
-                        bot.answer_callback_query(call.id, "ፎቶዎቹን ማንበብ አልተቻለም።", show_alert=True)
+                if media_list:
+                    await context.bot.send_media_group(chat_id=target_channel, media=media_list)
+                    await query.edit_message_text(f"✅ አልበሙ በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!")
                 else:
-                    bot.answer_callback_query(call.id, "የአልበሙ መረጃ አልተገኘም፣ እባክዎ እንደገና ይሞክሩ።", show_alert=True)
+                    await query.edit_message_text("ፎቶዎቹን ማንበብ አልተቻለም።")
             else:
-                # ነጠላ ፎቶ ወይም መልእክት ከሆነ
-                bot.copy_message(target_channel, call.message.chat.id, replied_msg.message_id)
-                bot.edit_message_text(
-                    f"✅ እቃው በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!",
-                    call.message.chat.id, 
-                    call.message.message_id
-                )
+                await query.edit_message_text("የአልበሙ መረጃ ጊዜው አልፏል።")
         else:
-            bot.answer_callback_query(call.id, "እባክዎ ፎቶውን ሪፕሊ በማድረግ እንደገና ይሞክሩ።", show_alert=True)
+            # ነጠላ ፎቶ ወይም ቪዲዮ ከሆነ
+            await context.bot.copy_message(chat_id=target_channel, from_chat_id=reply_msg.chat.id, message_id=reply_msg.message_id)
+            await query.edit_message_text(f"✅ እቃው በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!")
     except Exception as e:
-        bot.answer_callback_query(call.id, f"ስህተት ተፈጥሯል: {e}", show_alert=True)
+        await query.edit_message_text(f"ስህተት ተፈጥሯል: {e}")
 
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"ADEY MARKET Bot is active!")
-    def log_message(self, format, *args):
-        pass
+def main():
+    application = Application.builder().token(BOT_TOKEN).build()
 
-def run_web_server():
-    port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
-    server.serve_forever()
+    application.add_handler(CommandHandler(["start", "menu"], start))
+    application.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO & ~filters.COMMAND, handle_admin_upload))
+    from telegram.ext import CallbackQueryHandler
+    application.add_handler(CallbackQueryHandler(button_callback))
+
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
-    threading.Thread(target=run_web_server, daemon=True).start()
-    print("ADEY MARKET Bot is running...")
-    while True:
-        try:
-            bot.remove_webhook()
-            bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
-        except Exception as e:
-            print(f"Polling error: {e}")
+    main()
