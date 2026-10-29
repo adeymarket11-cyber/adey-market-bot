@@ -1,150 +1,165 @@
-import logging
-from asyncio import sleep
-from telegram import Update, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    filters,
-)
+import os
+import threading
+import time
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 
-# ---------------- CONFIGURATION ----------------
-TOKEN = "8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk"  # የቦትዎን ቶክን እዚህ ያስገቡ
-ADMIN_ID = 8703011579         # የእርስዎን Admin Telegram ID
-CHANNEL_ID = "@adeymarket3"    # የመጨረሻው ፖስት የሚሄድበት ቻናል handle ወይም ID
+BOT_TOKEN = "8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk"
+ADMIN_ID = "8703011579"
 
-# የፎቶዎች ጊዜያዊ ማከማቻ (Album Handling)
-MEDIA_GROUPS = {}
+bot = telebot.TeleBot(BOT_TOKEN)
 
-# የምድብ ክፍሎች (Categories)
-CATEGORIES = {
-    "bed": "🛏️ አልጋ",
-    "washing": "🧺 Washing Machine",
-    "fridge": "🧊 ፍሪጅ",
-    "sofa": "🛋️ ሶፋ",
-    "tv": "📺 TV / ቲቪ ስታንድ",
-    "wardrobe": "🚪 ቁምሳጥን",
-    "dining": "🍽️ የምግብ ጠረቤዛ",
-    "furniture": "🪑 ፉርኒቸር",
-    "other": "✨ ተጨማሪ"
+CATEGORY_CHANNELS = {
+    "bed": ("🛏️ አልጋ", "@adey_market_bed"),
+    "washing": ("🧺 Washing Machine", "@adey_market_washingmachine"),
+    "fridge": ("🧊 ፍሪጅ", "@adey_market_Refrigerator"),
+    "sofa": ("🛋️ ሶፋ", "@adey_market_sofa"),
+    "tv": ("📺 TV / ቲቪ ስታንድ", "@adey_market_Tv"),
+    "wardrobe": ("🚪 ቁምሳጥን", "@adey_market_Wardrobe"),
+    "dining": ("🍽️ የምግብ ጠረቤዛ", "@adey_market_dining_table"),
+    "furniture": ("🪑 ፈርኒቸር", "@adey_market_furniture"),
+    "extra": ("✨ ተጨማሪ", "@adey_market_other"),
 }
 
-logging.basicConfig(level=logging.INFO)
+CATEGORIES = [
+    ("🛏️ አልጋ", "https://t.me/adey_market_bed"),
+    ("🧺 Washing Machine", "https://t.me/adey_market_washingmachine"),
+    ("🧊 ፍሪጅ", "https://t.me/adey_market_Refrigerator"),
+    ("🛋️ ሶፋ", "https://t.me/adey_market_sofa"),
+    ("📺 TV / ቲቪ ስታንድ", "https://t.me/adey_market_Tv"),
+    ("🚪 ቁምሳጥን", "https://t.me/adey_market_Wardrobe"),
+    ("🍽️ የምግብ ጠረቤዛ", "https://t.me/adey_market_dining_table"),
+    ("🪑 ፈርኒቸር", "https://t.me/adey_market_furniture"),
+    ("✨ ተጨማሪ", "https://t.me/adey_market_other"),
+]
 
-# 1. ፎቶ (አንድም ይሁን ብዙ) ሲላክ የሚቀበል Handler
-async def handle_photos(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.from_user.id != ADMIN_ID:
+def make_menu():
+    markup = InlineKeyboardMarkup(row_width=2)
+    buttons = [InlineKeyboardButton(name, url=url) for name, url in CATEGORIES]
+    for i in range(0, len(buttons), 2):
+        markup.add(*buttons[i:i+2])
+    markup.add(InlineKeyboardButton("📩 Inbox ለማውራት", url="https://t.me/adeyused"))
+    return markup
+
+MENU_TEXT = (
+    "🟡 **ADEY MARKET** 🏠\n\n"
+    "ያገለገሉ የቤት እቃዎችን ከታች ይምረጡ።\n\n"
+    "👇 **የሚፈልጉትን ምድብ ይንኩ።**\n\n"
+    "📞 **ስልክ:** 0985427286\n"
+    "📩 **Telegram Inbox:** @adeyused"
+)
+
+@bot.message_handler(commands=["start", "menu"])
+def show_menu(message):
+    bot.send_message(message.chat.id, MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
+
+# ብዙ ፎቶዎችን (Media Groups) ለመሰብሰብ የሚረዳ ማህደር
+pending_albums = {}
+
+@bot.message_handler(content_types=['photo', 'video'])
+def handle_admin_upload(message):
+    if not ADMIN_ID or str(message.from_user.id) != str(ADMIN_ID):
         return
 
-    media_group_id = update.message.media_group_id
-    photo = update.message.photo[-1].file_id
+    markup = InlineKeyboardMarkup(row_width=2)
+    buttons = []
+    for key, (name, _) in CATEGORY_CHANNELS.items():
+        buttons.append(InlineKeyboardButton(name, callback_data=f"post_{key}"))
+        
+    for i in range(0, len(buttons), 2):
+        markup.add(*buttons[i:i+2])
 
-    # ፎቶው የአልበም (የብዙ ፎቶ) አካል ከሆነ
-    if media_group_id:
-        if media_group_id not in MEDIA_GROUPS:
-            MEDIA_GROUPS[media_group_id] = []
-            MEDIA_GROUPS[media_group_id].append(photo)
+    # ፎቶው በአልበም (Media Group) መልክ የመጣ ከሆነ
+    if message.media_group_id:
+        gid = message.media_group_id
+        if gid not in pending_albums:
+            pending_albums[gid] = {
+                "messages": [],
+                "target_message": message # አድሚኑ ቁልፉን እንዲነካበት
+            }
+        pending_albums[gid]["messages"].append(message)
+        
+        # የመጀመሪያው ፎቶ ላይ ብቻ የምድብ ምርጫ ቁልፎቹን እንለጥፋለን
+        if len(pending_albums[gid]["messages"]) == 1:
+            bot.reply_to(message, f"📦 **ይህ አልበም (Media Group) የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?**\n(አልበሙ በመሰብሰብ ላይ ነው...) ይጫኑ:", parse_mode="Markdown", reply_markup=markup)
+    else:
+        # ነጠላ ፎቶ ወይም ቪዲዮ ከሆነ
+        bot.reply_to(message, "📦 **ይህን እቃ የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?**", parse_mode="Markdown", reply_markup=markup)
 
-            # ፎቶዎቹ በሙሉ እስኪደርሱ 1 ሰከንድ ይጠብቃል
-            await sleep(1)
+@bot.callback_query_handler(func=lambda call: call.data.startswith("post_"))
+def callback_post_handler(call):
+    if not ADMIN_ID or str(call.from_user.id) != str(ADMIN_ID):
+        bot.answer_callback_query(call.id, "ይህን ማድረግ የሚችለው አድሚኑ ብቻ ነው!")
+        return
 
-            photos = MEDIA_GROUPS.pop(media_group_id)
-            context.user_data['pending_photos'] = photos
-            await send_category_keyboard(update, context, len(photos))
+    cat_key = call.data.replace("post_", "")
+    channel_info = CATEGORY_CHANNELS.get(cat_key)
+    if not channel_info:
+        bot.answer_callback_query(call.id, "ቻናል አልተገኘም!")
+        return
+
+    cat_name, target_channel = channel_info
+    try:
+        replied_msg = call.message.reply_to_message
+        if replied_msg:
+            # ፎቶው በአልበም (Media Group) መልክ የመጣ መሆኑን ማረጋገጥ
+            if replied_msg.media_group_id and replied_msg.media_group_id in pending_albums:
+                gid = replied_msg.media_group_id
+                album_data = pending_albums.pop(gid, None)
+                
+                if album_data and album_data["messages"]:
+                    media_group = []
+                    for m in album_data["messages"]:
+                        if m.photo:
+                            file_id = m.photo[-1].file_id
+                            # የመጀመሪያው ፎቶ ላይ ካፕሽን (Caption) ካለው እንይዛለን
+                            caption = m.caption if m == album_data["messages"][0] else ""
+                            media_group.append(InputMediaPhoto(file_id, caption=caption, parse_mode="Markdown"))
+                    
+                    if media_group:
+                        bot.send_media_group(target_channel, media_group)
+                        bot.edit_message_text(
+                            f"✅ አልበሙ (Media Group) በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!",
+                            call.message.chat.id, 
+                            call.message.message_id
+                        )
+                    else:
+                        bot.answer_callback_query(call.id, "ፎቶዎቹን ማንበብ አልተቻለም።", show_alert=True)
+                else:
+                    bot.answer_callback_query(call.id, "የአልበሙ መረጃ አልተገኘም፣ እባክዎ እንደገና ይሞክሩ።", show_alert=True)
+            else:
+                # ነጠላ ፎቶ ወይም መልእክት ከሆነ
+                bot.copy_message(target_channel, call.message.chat.id, replied_msg.message_id)
+                bot.edit_message_text(
+                    f"✅ እቃው በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!",
+                    call.message.chat.id, 
+                    call.message.message_id
+                )
         else:
-            MEDIA_GROUPS[media_group_id].append(photo)
-    else:
-        # አንድ ፎቶ ብቻ ከሆነ
-        context.user_data['pending_photos'] = [photo]
-        await send_category_keyboard(update, context, 1)
+            bot.answer_callback_query(call.id, "እባክዎ ፎቶውን ሪፕሊ በማድረግ እንደገና ይሞክሩ።", show_alert=True)
+    except Exception as e:
+        bot.answer_callback_query(call.id, f"ስህተት ተፈጥሯል: {e}", show_alert=True)
 
-# 2. የምድብ መምረጫ ቁልፎችን ለይቶ ማሳያ
-async def send_category_keyboard(update: Update, context: ContextTypes.DEFAULT_TYPE, count: int):
-    keyboard = []
-    keys = list(CATEGORIES.keys())
-    for i in range(0, len(keys), 2):
-        row = [InlineKeyboardButton(CATEGORIES[keys[i]], callback_data=f"cat_{keys[i]}")]
-        if i + 1 < len(keys):
-            row.append(InlineKeyboardButton(CATEGORIES[keys[i+1]], callback_data=f"cat_{keys[i+1]}"))
-        keyboard.append(row)
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"ADEY MARKET Bot is active!")
+    def log_message(self, format, *args):
+        pass
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
-        f"📦 **{count} ፎቶ(ዎች) ተቀብለናል!**\n\nይህንን እቃ የየትኛው ምድብ ቻናል ላይ ፖስት እንዲሆን ይፈልጋሉ?",
-        reply_markup=reply_markup,
-        parse_mode="Markdown"
-    )
+def run_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    server.serve_forever()
 
-# 3. ምድብ ሲመረጥ መረጃ እንዲያስገባ መጠየቂያ
-async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    category_key = query.data.replace("cat_", "")
-    context.user_data['selected_category'] = CATEGORIES[category_key]
-
-    await query.edit_message_text(
-        f"✅ የተመረጠው ምድብ: **{CATEGORIES[category_key]}**\n\n"
-        "አሁን የእቃውን መረጃ በሚከተለው ፎርማት ይላኩልኝ፦\n\n"
-        "የእቃው አይነት: DiningTable\n"
-        "ዋጋ: 32,000\n"
-        "ቦታ: ፉሪ\n"
-        "ሁኔታ: ጥሩ ነው",
-        parse_mode="Markdown"
-    )
-
-# 4. መረጃው ሲላክ ቻናል ላይ አልበም አድርጎ ፖስት ማድረጊያ
-async def handle_text_and_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.from_user.id != ADMIN_ID:
-        return
-
-    photos = context.user_data.get('pending_photos')
-    category = context.user_data.get('selected_category', 'ቤት እቃዎች')
-
-    if not photos:
-        await update.message.reply_text("እባክዎን በመጀመሪያ የቃውን ፎቶ(ዎች) ይላኩ።")
-        return
-
-    text = update.message.text
-
-    caption = (
-        f"🟡 **ADEY MARKET** 🏠\n\n"
-        f"📦 **የእቃው ምድብ:** {category}\n"
-        f"{text}\n\n"
-        f"📞 **ለመግዛት:** 0985427286\n"
-        f"📩 **Inbox:** @adeyused\n\n"
-        f"👇 **JOIN ያድርጉ:**\n"
-        f"👉 {CHANNEL_ID}"
-    )
-
-    # ፎቶዎቹን በአንድ ላይ (Media Group/Album) ወደ ቻናል መላክ
-    if len(photos) == 1:
-        await context.bot.send_photo(
-            chat_id=CHANNEL_ID,
-            photo=photos[0],
-            caption=caption,
-            parse_mode="Markdown"
-        )
-    else:
-        media = [InputMediaPhoto(media=p) for p in photos]
-        # የመጀመሪያው ፎቶ ላይ Caption ያያይዛል
-        media[0] = InputMediaPhoto(media=photos[0], caption=caption, parse_mode="Markdown")
-        await context.bot.send_media_group(chat_id=CHANNEL_ID, media=media)
-
-    await update.message.reply_text("✅ እቃው በስኬት ቻናል ላይ ፖስት ተደርጓል!")
-
-    # Memory Clear ማድረግ
-    context.user_data.clear()
-
-# main function
 if __name__ == "__main__":
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    app.add_handler(MessageHandler(filters.PHOTO, handle_photos))
-    app.add_handler(CallbackQueryHandler(category_callback, pattern="^cat_"))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_and_post))
-
-    print("Bot is running...")
-    app.run_polling()
+    threading.Thread(target=run_web_server, daemon=True).start()
+    print("ADEY MARKET Bot is running...")
+    while True:
+        try:
+            bot.remove_webhook()
+            bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            print(f"Polling error: {e}")
