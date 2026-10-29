@@ -55,6 +55,7 @@ MENU_TEXT = (
 def show_menu(message):
     bot.send_message(message.chat.id, MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
 
+# የአድሚን ክፍለ-ጊዜዎችን እና ፎቶዎችን ለመያዝ
 admin_sessions = {}
 media_group_buffer = {}
 
@@ -106,7 +107,8 @@ def callback_category(call):
     
     admin_sessions[call.from_user.id] = {
         "identifier": identifier,
-        "cat_key": cat_key
+        "cat_key": cat_key,
+        "step": "waiting_condition"
     }
 
     markup = InlineKeyboardMarkup(row_width=2)
@@ -133,16 +135,17 @@ def callback_condition(call):
     
     if call.from_user.id in admin_sessions:
         admin_sessions[call.from_user.id]["condition"] = cond_map.get(cond, cond)
+        admin_sessions[call.from_user.id]["step"] = "waiting_price"
         
         bot.edit_message_text(
-            "📝 **አሁን የእቃውን ዋጋ እና ቦታ ይጻፉልኝ**\n\n"
-            "*(ማስታወሻ: ዋጋውን ብቻ ወይም ዋጋ እና ቦታ በአንድ ላይ መጻፍ ይችላሉ)*", 
+            "📝 **አሁን የእቃውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n"
+            "*(ምሳሌ: 12000 ብር | ቦሌ)*", 
             call.message.chat.id, 
             call.message.message_id, 
             parse_mode="Markdown"
         )
 
-@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions)
+@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_price")
 def handle_price_location(message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return
@@ -153,13 +156,11 @@ def handle_price_location(message):
 
     user_text = message.text.strip()
     
-    # ዋጋ እና ቦታን ለመለየት (በ | ወይም በባዶ ቦታ)
     if "|" in user_text:
         parts = user_text.split("|")
         price = parts[0].strip()
         location = parts[1].strip()
     else:
-        # በባዶ ቦታ የተለየ ከሆነ ወይም ዋጋ ብቻ ከገባ
         parts = user_text.split(maxsplit=1)
         price = parts[0].strip() if len(parts) > 0 else user_text
         location = parts[1].strip() if len(parts) > 1 else "አዲስ አበባ"
