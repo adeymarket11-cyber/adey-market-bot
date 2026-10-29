@@ -6,13 +6,9 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 
 BOT_TOKEN = "8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk"
-
-# አድሚኖች
 ADMIN_IDS = ["8703011579", "8144813729", "8994655471"]
 
 bot = telebot.TeleBot(BOT_TOKEN)
-
-# ዋናው የቻናል ፖስታ ማስተላለፊያ (ሁሉንም እቃዎች ወደዚህ ዋና ቻናልም ጭምር መለጠፍ ከፈለጉ)
 MAIN_CHANNEL = "@adeymarket3"
 
 CATEGORY_CHANNELS = {
@@ -59,7 +55,6 @@ MENU_TEXT = (
 def show_menu(message):
     bot.send_message(message.chat.id, MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
 
-# የአድሚኖችን ሂደቶች (States) ለመቆጣጠር የሚረዱ ማህደሮች
 admin_sessions = {}
 media_group_buffer = {}
 
@@ -70,7 +65,6 @@ def handle_admin_upload(message):
 
     admin_id = message.from_user.id
     
-    # ፎቶውን በአልበም ወይም በነጠላ እንይዛለን
     if message.media_group_id:
         gid = message.media_group_id
         if gid not in media_group_buffer:
@@ -112,11 +106,9 @@ def callback_category(call):
     
     admin_sessions[call.from_user.id] = {
         "identifier": identifier,
-        "cat_key": cat_key,
-        "step": "condition"
+        "cat_key": cat_key
     }
 
-    # የሁኔታ (Condition) ምርጫ ማሳየት
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
         InlineKeyboardButton("✨ አዲስ (New)", callback_data="cond_New"),
@@ -132,7 +124,6 @@ def callback_condition(call):
         return
     
     cond = call.data.replace("cond_", "")
-    # የጽሁፍ ውክልና መስጠት
     cond_map = {
         "New": "✨ አዲስ (New)",
         "Used": "🔄 ያገለገለ (Used)",
@@ -142,26 +133,36 @@ def callback_condition(call):
     
     if call.from_user.id in admin_sessions:
         admin_sessions[call.from_user.id]["condition"] = cond_map.get(cond, cond)
-        admin_sessions[call.from_user.id]["step"] = "price_location"
         
         bot.edit_message_text(
-            "📝 **አሁን የእቃውን ዋጋ እና ቦታ (Price & Location) በአንድ ላይ ይጻፉልኝ**\n\n"
-            "*(ምሳሌ: 15,000 ብር | ቦሌ መديና)*", 
+            "📝 **አሁን የእቃውን ዋጋ እና ቦታ ይጻፉልኝ**\n\n"
+            "*(ማስታወሻ: ዋጋውን ብቻ ወይም ዋጋ እና ቦታ በአንድ ላይ መጻፍ ይችላሉ)*", 
             call.message.chat.id, 
             call.message.message_id, 
             parse_mode="Markdown"
         )
 
-@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "price_location")
+@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions)
 def handle_price_location(message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return
 
-    session = admin_sessions.pop(message.from_user.id)
-    text_data = message.text.split("|")
+    session = admin_sessions.pop(message.from_user.id, None)
+    if not session:
+        return
+
+    user_text = message.text.strip()
     
-    price = text_data[0].strip() if len(text_data) > 0 else "ከተስማሚ ጋር"
-    location = text_data[1].strip() if len(text_data) > 1 else text_data[0].strip()
+    # ዋጋ እና ቦታን ለመለየት (በ | ወይም በባዶ ቦታ)
+    if "|" in user_text:
+        parts = user_text.split("|")
+        price = parts[0].strip()
+        location = parts[1].strip()
+    else:
+        # በባዶ ቦታ የተለየ ከሆነ ወይም ዋጋ ብቻ ከገባ
+        parts = user_text.split(maxsplit=1)
+        price = parts[0].strip() if len(parts) > 0 else user_text
+        location = parts[1].strip() if len(parts) > 1 else "አዲስ አበባ"
 
     cat_key = session["cat_key"]
     identifier = session["identifier"]
@@ -169,11 +170,10 @@ def handle_price_location(message):
     
     cat_name, target_channel = CATEGORY_CHANNELS.get(cat_key, ("✨ ተጨማሪ", "@adey_market_other"))
 
-    # ፖስቱን ማዘጋጀት
     caption_text = (
         "🟡 **ADEY MARKET** 🏠\n\n"
         f"📦 **የእቃው አይነት፦** {cat_name}\n"
-        f"💰 **ዋጋ፦** {price}\n"
+        f"💰 **ዋጋ፦** {price} ብር\n"
         f"📍 **ቦታ፦** {location}\n"
         f"☑ **ሁኔታ፦** {condition}\n"
         "📞 **ለመሸጥ፦** 0985427286\n"
@@ -183,7 +183,6 @@ def handle_price_location(message):
         "🤝 **ADEY MARKET**"
     )
 
-    # ፎቶዎችን ወደ ቻናል መላክ
     group_data = media_group_buffer.pop(identifier, None)
     if group_data and group_data["messages"]:
         messages = group_data["messages"]
@@ -192,24 +191,19 @@ def handle_price_location(message):
         for idx, m in enumerate(messages):
             if m.photo:
                 file_id = m.photo[-1].file_id
-                # የመጀመሪያው ፎቶ ላይ ካፕሽኑን እናስገባለን
                 cap = caption_text if idx == 0 else ""
                 media_list.append(InputMediaPhoto(file_id, caption=cap, parse_mode="Markdown"))
         
         try:
             if media_list:
-                # ወደ ምድብ ቻናል መላክ
                 bot.send_media_group(target_channel, media_list)
-                # ወደ ዋናው ቻናልም መላክ ከፈለጉ
                 if target_channel != MAIN_CHANNEL:
                     bot.send_media_group(MAIN_CHANNEL, media_list)
                 
-                bot.reply_message = message
                 bot.reply_to(message, f"✅ እቃው በትክክል ወደ **{cat_name}** ({target_channel}) እና ዋናው ቻናል ተልኳል!", parse_mode="Markdown")
         except Exception as e:
             bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
-# የRender ፖርት ማሟያ (Dummy Web Server)
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
