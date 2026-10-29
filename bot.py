@@ -7,10 +7,13 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMedia
 
 BOT_TOKEN = "8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk"
 
-# አድሚኖች (የቀድሞው አድሚን እና ሁለቱ አዲስ አድሚኖች)
+# አድሚኖች
 ADMIN_IDS = ["8703011579", "8144813729", "8994655471"]
 
 bot = telebot.TeleBot(BOT_TOKEN)
+
+# ዋናው የቻናል ፖስታ ማስተላለፊያ (ሁሉንም እቃዎች ወደዚህ ዋና ቻናልም ጭምር መለጠፍ ከፈለጉ)
+MAIN_CHANNEL = "@adeymarket3"
 
 CATEGORY_CHANNELS = {
     "bed": ("🛏️ አልጋ", "@adey_market_bed"),
@@ -24,7 +27,7 @@ CATEGORY_CHANNELS = {
     "extra": ("✨ ተጨማሪ", "@adey_market_other"),
 }
 
-CATEGORIES = [
+CATEGORIES_MENU = [
     ("🛏️ አልጋ", "https://t.me/adey_market_bed"),
     ("🧺 Washing Machine", "https://t.me/adey_market_washingmachine"),
     ("🧊 ፍሪጅ", "https://t.me/adey_market_Refrigerator"),
@@ -38,7 +41,7 @@ CATEGORIES = [
 
 def make_menu():
     markup = InlineKeyboardMarkup(row_width=2)
-    buttons = [InlineKeyboardButton(name, url=url) for name, url in CATEGORIES]
+    buttons = [InlineKeyboardButton(name, url=url) for name, url in CATEGORIES_MENU]
     for i in range(0, len(buttons), 2):
         markup.add(*buttons[i:i+2])
     markup.add(InlineKeyboardButton("📩 Inbox ለማውራት", url="https://t.me/adeyused"))
@@ -56,24 +59,18 @@ MENU_TEXT = (
 def show_menu(message):
     bot.send_message(message.chat.id, MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
 
-# ፎቶዎችን እና አልበሞችን (Media Groups) በጊዜያዊነት ለመያዝ
+# የአድሚኖችን ሂደቶች (States) ለመቆጣጠር የሚረዱ ማህደሮች
+admin_sessions = {}
 media_group_buffer = {}
 
 @bot.message_handler(content_types=['photo', 'video'])
 def handle_admin_upload(message):
-    # ከፈቀድናቸው አድሚኖች ውጪ ያለ ሰው ቢልክ ችላ ይላል
     if str(message.from_user.id) not in ADMIN_IDS:
         return
 
-    markup = InlineKeyboardMarkup(row_width=2)
-    buttons = []
-    for key, (name, _) in CATEGORY_CHANNELS.items():
-        buttons.append(InlineKeyboardButton(name, callback_data=f"post_{key}"))
-        
-    for i in range(0, len(buttons), 2):
-        markup.add(*buttons[i:i+2])
-
-    # ፎቶው በአልበም (Media Group) መልክ ከመጣ
+    admin_id = message.from_user.id
+    
+    # ፎቶውን በአልበም ወይም በነጠላ እንይዛለን
     if message.media_group_id:
         gid = message.media_group_id
         if gid not in media_group_buffer:
@@ -81,80 +78,136 @@ def handle_admin_upload(message):
                 "messages": [],
                 "sent_prompt": False
             }
-        
         media_group_buffer[gid]["messages"].append(message)
-        
-        # ፎቶዎቹ በሙሉ እስኪሰባሰቡ ለጥቂት ሰኮንዶች እንጠብቃለን
         time.sleep(0.5)
         
-        # በመጀመሪያው ፎቶ ስር ብቻ የምድብ ምርጫ ቁልፉን እንልካለን
         if not media_group_buffer[gid]["sent_prompt"]:
             media_group_buffer[gid]["sent_prompt"] = True
-            bot.reply_to(
-                message, 
-                "📦 **ይህንን አልበም (Media Group) የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?** ከታች ይምረጡ:", 
-                parse_mode="Markdown", 
-                reply_markup=markup
-            )
+            ask_category(message, gid)
     else:
-        # ነጠላ ፎቶ ወይም ቪዲዮ ከሆነ
-        bot.reply_to(message, "📦 **ይህን እቃ የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?** ከታች ይምረጡ:", parse_mode="Markdown", reply_markup=markup)
+        media_group_buffer[message.message_id] = {
+            "messages": [message],
+            "sent_prompt": True
+        }
+        ask_category(message, message.message_id)
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("post_"))
-def callback_post_handler(call):
+def ask_category(message, identifier):
+    markup = InlineKeyboardMarkup(row_width=2)
+    buttons = []
+    for key, (name, _) in CATEGORY_CHANNELS.items():
+        buttons.append(InlineKeyboardButton(name, callback_data=f"cat_{identifier}_{key}"))
+    for i in range(0, len(buttons), 2):
+        markup.add(*buttons[i:i+2])
+    
+    bot.reply_to(message, "📦 **ይህ እቃ የየትኛው ምድብ ነው?** ከታች ይምረጡ:", parse_mode="Markdown", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("cat_"))
+def callback_category(call):
     if str(call.from_user.id) not in ADMIN_IDS:
-        bot.answer_callback_query(call.id, "ይህን ማድረግ የሚችሉት አድሚኖች ብቻ ናቸው!", show_alert=True)
+        return
+    
+    parts = call.data.split("_")
+    identifier = parts[1]
+    cat_key = "_".join(parts[2:])
+    
+    admin_sessions[call.from_user.id] = {
+        "identifier": identifier,
+        "cat_key": cat_key,
+        "step": "condition"
+    }
+
+    # የሁኔታ (Condition) ምርጫ ማሳየት
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton("✨ አዲስ (New)", callback_data="cond_New"),
+        InlineKeyboardButton("🔄 ያገለገለ (Used)", callback_data="cond_Used"),
+        InlineKeyboardButton("⭐ ንጹህ (Slightly Used)", callback_data="cond_SlightlyUsed"),
+        InlineKeyboardButton("🏚️ ያረጀ (Old)", callback_data="cond_Old")
+    )
+    bot.edit_message_text("🛠️ **የእቃውን ሁኔታ (Condition) ይምረጡ:**", call.message.chat.id, call.message.message_id, parse_mode="Markdown", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("cond_"))
+def callback_condition(call):
+    if str(call.from_user.id) not in ADMIN_IDS:
+        return
+    
+    cond = call.data.replace("cond_", "")
+    # የጽሁፍ ውክልና መስጠት
+    cond_map = {
+        "New": "✨ አዲስ (New)",
+        "Used": "🔄 ያገለገለ (Used)",
+        "SlightlyUsed": "⭐ ንጹህ (Slightly Used)",
+        "Old": "🏚️ ያረጀ (Old)"
+    }
+    
+    if call.from_user.id in admin_sessions:
+        admin_sessions[call.from_user.id]["condition"] = cond_map.get(cond, cond)
+        admin_sessions[call.from_user.id]["step"] = "price_location"
+        
+        bot.edit_message_text(
+            "📝 **አሁን የእቃውን ዋጋ እና ቦታ (Price & Location) በአንድ ላይ ይጻፉልኝ**\n\n"
+            "*(ምሳሌ: 15,000 ብር | ቦሌ መديና)*", 
+            call.message.chat.id, 
+            call.message.message_id, 
+            parse_mode="Markdown"
+        )
+
+@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "price_location")
+def handle_price_location(message):
+    if str(message.from_user.id) not in ADMIN_IDS:
         return
 
-    cat_key = call.data.replace("post_", "")
-    channel_info = CATEGORY_CHANNELS.get(cat_key)
-    if not channel_info:
-        bot.answer_callback_query(call.id, "ቻናል አልተገኘም!")
-        return
+    session = admin_sessions.pop(message.from_user.id)
+    text_data = message.text.split("|")
+    
+    price = text_data[0].strip() if len(text_data) > 0 else "ከተስማሚ ጋር"
+    location = text_data[1].strip() if len(text_data) > 1 else text_data[0].strip()
 
-    cat_name, target_channel = channel_info
-    reply_msg = call.message.reply_to_message
+    cat_key = session["cat_key"]
+    identifier = session["identifier"]
+    condition = session["condition"]
+    
+    cat_name, target_channel = CATEGORY_CHANNELS.get(cat_key, ("✨ ተጨማሪ", "@adey_market_other"))
 
-    if not reply_msg:
-        bot.answer_callback_query(call.id, "እባክዎ መልእክቱን ሪፕሊ በማድረግ እንደገና ይሞክሩ።", show_alert=True)
-        return
+    # ፖስቱን ማዘጋጀት
+    caption_text = (
+        "🟡 **ADEY MARKET** 🏠\n\n"
+        f"📦 **የእቃው አይነት፦** {cat_name}\n"
+        f"💰 **ዋጋ፦** {price}\n"
+        f"📍 **ቦታ፦** {location}\n"
+        f"☑ **ሁኔታ፦** {condition}\n"
+        "📞 **ለመሸጥ፦** 0985427286\n"
+        "📩 **ለInbox፦** @adeyused\n\n"
+        "👇 **JOIN ያድርጉ፣ አዳዲስ እቃዎችን ያግኙ!**\n"
+        f"📢 **Telegram Channel፦** {MAIN_CHANNEL}\n\n\n"
+        "🤝 **ADEY MARKET**"
+    )
 
-    try:
-        # ሪፕሊ የተደረገበት መልእክት የ Media Group አካል መሆኑን እንፈትሻለን
-        target_gid = None
-        for gid, data in media_group_buffer.items():
-            if any(m.message_id == reply_msg.message_id for m in data["messages"]):
-                target_gid = gid
-                break
-
-        if target_gid:
-            group_data = media_group_buffer.pop(target_gid)
-            media_list = []
-            for idx, m in enumerate(group_data["messages"]):
-                if m.photo:
-                    file_id = m.photo[-1].file_id
-                    caption = m.caption if idx == 0 else ""
-                    media_list.append(InputMediaPhoto(file_id, caption=caption, parse_mode="Markdown"))
-            
+    # ፎቶዎችን ወደ ቻናል መላክ
+    group_data = media_group_buffer.pop(identifier, None)
+    if group_data and group_data["messages"]:
+        messages = group_data["messages"]
+        media_list = []
+        
+        for idx, m in enumerate(messages):
+            if m.photo:
+                file_id = m.photo[-1].file_id
+                # የመጀመሪያው ፎቶ ላይ ካፕሽኑን እናስገባለን
+                cap = caption_text if idx == 0 else ""
+                media_list.append(InputMediaPhoto(file_id, caption=cap, parse_mode="Markdown"))
+        
+        try:
             if media_list:
+                # ወደ ምድብ ቻናል መላክ
                 bot.send_media_group(target_channel, media_list)
-                bot.edit_message_text(
-                    f"✅ አልበሙ በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!",
-                    call.message.chat.id, 
-                    call.message.message_id
-                )
-            else:
-                bot.answer_callback_query(call.id, "ፎቶዎቹን ማንበብ አልተቻለም።", show_alert=True)
-        else:
-            # ነጠላ ፎቶ ወይም ቪዲዮ ከሆነ
-            bot.copy_message(target_channel, call.message.chat.id, reply_msg.message_id)
-            bot.edit_message_text(
-                f"✅ እቃው በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!",
-                call.message.chat.id, 
-                call.message.message_id
-            )
-    except Exception as e:
-        bot.answer_callback_query(call.id, f"ስህተት ተፈጥሯል: {e}", show_alert=True)
+                # ወደ ዋናው ቻናልም መላክ ከፈለጉ
+                if target_channel != MAIN_CHANNEL:
+                    bot.send_media_group(MAIN_CHANNEL, media_list)
+                
+                bot.reply_message = message
+                bot.reply_to(message, f"✅ እቃው በትክክል ወደ **{cat_name}** ({target_channel}) እና ዋናው ቻናል ተልኳል!", parse_mode="Markdown")
+        except Exception as e:
+            bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
 # የRender ፖርት ማሟያ (Dummy Web Server)
 class HealthCheckHandler(BaseHTTPRequestHandler):
