@@ -6,7 +6,9 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 
 BOT_TOKEN = "8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk"
-ADMIN_ID = "8703011579"
+
+# አድሚኖች (የቀድሞው አድሚን እና ሁለቱ አዲስ አድሚኖች)
+ADMIN_IDS = ["8703011579", "8144813729", "8994655471"]
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -54,12 +56,13 @@ MENU_TEXT = (
 def show_menu(message):
     bot.send_message(message.chat.id, MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
 
-# ብዙ ፎቶዎችን (Media Groups) ለመሰብሰብ የሚረዳ ማህደር
-pending_albums = {}
+# ፎቶዎችን እና አልበሞችን (Media Groups) በጊዜያዊነት ለመያዝ
+media_group_buffer = {}
 
 @bot.message_handler(content_types=['photo', 'video'])
 def handle_admin_upload(message):
-    if not ADMIN_ID or str(message.from_user.id) != str(ADMIN_ID):
+    # ከፈቀድናቸው አድሚኖች ውጪ ያለ ሰው ቢልክ ችላ ይላል
+    if str(message.from_user.id) not in ADMIN_IDS:
         return
 
     markup = InlineKeyboardMarkup(row_width=2)
@@ -70,27 +73,37 @@ def handle_admin_upload(message):
     for i in range(0, len(buttons), 2):
         markup.add(*buttons[i:i+2])
 
-    # ፎቶው በአልበም (Media Group) መልክ የመጣ ከሆነ
+    # ፎቶው በአልበም (Media Group) መልክ ከመጣ
     if message.media_group_id:
         gid = message.media_group_id
-        if gid not in pending_albums:
-            pending_albums[gid] = {
+        if gid not in media_group_buffer:
+            media_group_buffer[gid] = {
                 "messages": [],
-                "target_message": message # አድሚኑ ቁልፉን እንዲነካበት
+                "sent_prompt": False
             }
-        pending_albums[gid]["messages"].append(message)
         
-        # የመጀመሪያው ፎቶ ላይ ብቻ የምድብ ምርጫ ቁልፎቹን እንለጥፋለን
-        if len(pending_albums[gid]["messages"]) == 1:
-            bot.reply_to(message, f"📦 **ይህ አልበም (Media Group) የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?**\n(አልበሙ በመሰብሰብ ላይ ነው...) ይጫኑ:", parse_mode="Markdown", reply_markup=markup)
+        media_group_buffer[gid]["messages"].append(message)
+        
+        # ፎቶዎቹ በሙሉ እስኪሰባሰቡ ለጥቂት ሰኮንዶች እንጠብቃለን
+        time.sleep(0.5)
+        
+        # በመጀመሪያው ፎቶ ስር ብቻ የምድብ ምርጫ ቁልፉን እንልካለን
+        if not media_group_buffer[gid]["sent_prompt"]:
+            media_group_buffer[gid]["sent_prompt"] = True
+            bot.reply_to(
+                message, 
+                "📦 **ይህንን አልበም (Media Group) የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?** ከታች ይምረጡ:", 
+                parse_mode="Markdown", 
+                reply_markup=markup
+            )
     else:
         # ነጠላ ፎቶ ወይም ቪዲዮ ከሆነ
-        bot.reply_to(message, "📦 **ይህን እቃ የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?**", parse_mode="Markdown", reply_markup=markup)
+        bot.reply_to(message, "📦 **ይህን እቃ የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?** ከታች ይምረጡ:", parse_mode="Markdown", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("post_"))
 def callback_post_handler(call):
-    if not ADMIN_ID or str(call.from_user.id) != str(ADMIN_ID):
-        bot.answer_callback_query(call.id, "ይህን ማድረግ የሚችለው አድሚኑ ብቻ ነው!")
+    if str(call.from_user.id) not in ADMIN_IDS:
+        bot.answer_callback_query(call.id, "ይህን ማድረግ የሚችሉት አድሚኖች ብቻ ናቸው!", show_alert=True)
         return
 
     cat_key = call.data.replace("post_", "")
@@ -100,47 +113,50 @@ def callback_post_handler(call):
         return
 
     cat_name, target_channel = channel_info
+    reply_msg = call.message.reply_to_message
+
+    if not reply_msg:
+        bot.answer_callback_query(call.id, "እባክዎ መልእክቱን ሪፕሊ በማድረግ እንደገና ይሞክሩ።", show_alert=True)
+        return
+
     try:
-        replied_msg = call.message.reply_to_message
-        if replied_msg:
-            # ፎቶው በአልበም (Media Group) መልክ የመጣ መሆኑን ማረጋገጥ
-            if replied_msg.media_group_id and replied_msg.media_group_id in pending_albums:
-                gid = replied_msg.media_group_id
-                album_data = pending_albums.pop(gid, None)
-                
-                if album_data and album_data["messages"]:
-                    media_group = []
-                    for m in album_data["messages"]:
-                        if m.photo:
-                            file_id = m.photo[-1].file_id
-                            # የመጀመሪያው ፎቶ ላይ ካፕሽን (Caption) ካለው እንይዛለን
-                            caption = m.caption if m == album_data["messages"][0] else ""
-                            media_group.append(InputMediaPhoto(file_id, caption=caption, parse_mode="Markdown"))
-                    
-                    if media_group:
-                        bot.send_media_group(target_channel, media_group)
-                        bot.edit_message_text(
-                            f"✅ አልበሙ (Media Group) በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!",
-                            call.message.chat.id, 
-                            call.message.message_id
-                        )
-                    else:
-                        bot.answer_callback_query(call.id, "ፎቶዎቹን ማንበብ አልተቻለም።", show_alert=True)
-                else:
-                    bot.answer_callback_query(call.id, "የአልበሙ መረጃ አልተገኘም፣ እባክዎ እንደገና ይሞክሩ።", show_alert=True)
-            else:
-                # ነጠላ ፎቶ ወይም መልእክት ከሆነ
-                bot.copy_message(target_channel, call.message.chat.id, replied_msg.message_id)
+        # ሪፕሊ የተደረገበት መልእክት የ Media Group አካል መሆኑን እንፈትሻለን
+        target_gid = None
+        for gid, data in media_group_buffer.items():
+            if any(m.message_id == reply_msg.message_id for m in data["messages"]):
+                target_gid = gid
+                break
+
+        if target_gid:
+            group_data = media_group_buffer.pop(target_gid)
+            media_list = []
+            for idx, m in enumerate(group_data["messages"]):
+                if m.photo:
+                    file_id = m.photo[-1].file_id
+                    caption = m.caption if idx == 0 else ""
+                    media_list.append(InputMediaPhoto(file_id, caption=caption, parse_mode="Markdown"))
+            
+            if media_list:
+                bot.send_media_group(target_channel, media_list)
                 bot.edit_message_text(
-                    f"✅ እቃው በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!",
+                    f"✅ አልበሙ በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!",
                     call.message.chat.id, 
                     call.message.message_id
                 )
+            else:
+                bot.answer_callback_query(call.id, "ፎቶዎቹን ማንበብ አልተቻለም።", show_alert=True)
         else:
-            bot.answer_callback_query(call.id, "እባክዎ ፎቶውን ሪፕሊ በማድረግ እንደገና ይሞክሩ።", show_alert=True)
+            # ነጠላ ፎቶ ወይም ቪዲዮ ከሆነ
+            bot.copy_message(target_channel, call.message.chat.id, reply_msg.message_id)
+            bot.edit_message_text(
+                f"✅ እቃው በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!",
+                call.message.chat.id, 
+                call.message.message_id
+            )
     except Exception as e:
         bot.answer_callback_query(call.id, f"ስህተት ተፈጥሯል: {e}", show_alert=True)
 
+# የRender ፖርት ማሟያ (Dummy Web Server)
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
