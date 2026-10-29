@@ -3,7 +3,7 @@ import asyncio
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from threading import Thread
 from telegram import Update, InputMediaPhoto
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler, ConversationHandler
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 
 # --- 1. የRender ፖርት ችግርን የሚከላከል ሰርቨር ---
 class SimpleHandler(BaseHTTPRequestHandler):
@@ -72,8 +72,8 @@ MENU_TEXT = (
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
 
-# አድሚኑ እቃ ለመልቀቅ ፎቶዎችን ሲልክ እንድናስቀምጥባቸው
-admin_albums = {}
+# አልበሞችን ለመሰብሰብ የሚረዳ መዝገብ
+media_groups = {}
 
 async def handle_admin_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not ADMIN_ID or str(update.message.from_user.id) != str(ADMIN_ID):
@@ -93,8 +93,35 @@ async def handle_admin_upload(update: Update, context: ContextTypes.DEFAULT_TYPE
         keyboard.append(row)
     markup = InlineKeyboardMarkup(keyboard)
 
-    # ፎቶ ወይም ቪዲዮ ሲልክ የምድብ ምርጫ ቁልፎችን እንሰጣለን
-    await message.reply_text("📦 **ይህን እቃ (ወይም አልበም) የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?** ከታች ይምረጡ:", parse_mode="Markdown", reply_markup=markup)
+    # ፎቶው በአልበም (Media Group) መልክ ከመጣ
+    if message.media_group_id:
+        gid = message.media_group_id
+        if gid not in media_groups:
+            media_groups[gid] = {
+                "messages": [],
+                "sent_prompt": False
+            }
+        
+        media_groups[gid]["messages"].append(message)
+        
+        # ፎቶዎቹ በሙሉ እስኪሰባሰቡ ለጥቂት ሰኮንዶች እንጠብቃለን
+        await asyncio.sleep(1.0)
+        
+        # አንዴ ብቻ (በመጀመሪያው ፎቶ ስር) የምድብ ምርጫ ቁልፉን እንልካለን
+        if not media_groups[gid]["sent_prompt"]:
+            media_groups[gid]["sent_prompt"] = True
+            await message.reply_text(
+                "📦 **ይህንን አልበም የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?** ከታች ይምረጡ:",
+                parse_mode="Markdown",
+                reply_markup=markup
+            )
+    else:
+        # ነጠላ ፎቶ ወይም ቪዲዮ ከሆነ
+        await message.reply_text(
+            "📦 **ይህን እቃ የየትኛው ምድብ ቻናል ላይ ፖስት እንድርገው?** ከታች ይምረጡ:",
+            parse_mode="Markdown",
+            reply_markup=markup
+        )
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -117,17 +144,31 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_msg = query.message.reply_to_message
 
     if not reply_msg:
-        await query.edit_message_text("እባክዎ ፎቶውን ሪፕሊ በማድረግ የትኛውን ቻናል እንደሚፈልጉ ይምረጡ።")
+        await query.edit_message_text("እባክዎ መልእክቱን ሪፕሊ በማድረግ እንደገና ይሞክሩ።")
         return
 
     try:
-        # ሪፕሊ የተደረገበት መልእክት አልበም (Media Group) ከሆነ
-        if reply_msg.media_group_id:
-            # ተዛማጅ የሆኑትን የቡድን ፎቶዎች በሙሉ እንፈልጋለን (በኮንቴክስት ውስጥ ካሉ)
-            chat_id = reply_msg.chat_id
-            # ቴሌግራም ራሱ ኮፒ እንዲያደርግልን ወይም በአልበም እንዲልክ
-            await context.bot.copy_message(chat_id=target_channel, from_chat_id=chat_id, message_id=reply_msg.message_id)
-            await query.edit_message_text(f"✅ አልበሙ በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!")
+        # ሪፕሊ የተደረገበት መልእክት አልበም (Media Group) አካል መሆኑን እንፈትሻለን
+        target_gid = None
+        for gid, group_data in media_groups.items():
+            if any(m.message_id == reply_msg.message_id for m in group_data["messages"]):
+                target_gid = gid
+                break
+
+        if target_gid:
+            group_data = media_groups.pop(target_gid)
+            media_list = []
+            for idx, m in enumerate(group_data["messages"]):
+                if m.photo:
+                    file_id = m.photo[-1].file_id
+                    caption = m.caption if idx == 0 else ""
+                    media_list.append(InputMediaPhoto(media=file_id, caption=caption, parse_mode="Markdown"))
+            
+            if media_list:
+                await context.bot.send_media_group(chat_id=target_channel, media=media_list)
+                await query.edit_message_text(f"✅ አልበሙ በትክክል ወደ {cat_name} ({target_channel}) ቻናል ተልኳል!")
+            else:
+                await query.edit_message_text("ፎቶዎቹን ማንበብ አልተቻለም።")
         else:
             # ነጠላ ፎቶ ወይም ቪዲዮ ከሆነ
             await context.bot.copy_message(chat_id=target_channel, from_chat_id=reply_msg.chat.id, message_id=reply_msg.message_id)
@@ -139,7 +180,6 @@ def main():
     application = Application.builder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler(["start", "menu"], start))
-    # አድሚኑ ፎቶ ሲልክ ትክክለኛውን ሃንድለር ይጠቀማል
     application.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO & ~filters.COMMAND, handle_admin_upload))
     application.add_handler(CallbackQueryHandler(button_callback))
 
