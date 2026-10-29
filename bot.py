@@ -55,7 +55,6 @@ MENU_TEXT = (
 def show_menu(message):
     bot.send_message(message.chat.id, MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
 
-# የአድሚን ክፍለ-ጊዜዎችን እና ፎቶዎችን ለመያዝ
 admin_sessions = {}
 media_group_buffer = {}
 
@@ -66,25 +65,32 @@ def handle_admin_upload(message):
 
     admin_id = message.from_user.id
     
+    # ፎቶው በአልበም (Media Group) ከሆነ
     if message.media_group_id:
         gid = message.media_group_id
         if gid not in media_group_buffer:
             media_group_buffer[gid] = {
                 "messages": [],
-                "sent_prompt": False
+                "sent_prompt": False,
+                "chat_id": message.chat.id
             }
         media_group_buffer[gid]["messages"].append(message)
-        time.sleep(0.5)
         
+        # ፎቶዎቹ በሙሉ እስኪሰባሰቡ ትንሽ እንጠብቃለን
+        time.sleep(1.0)
+        
+        # ለአልበሙ አንድ ጊዜ ብቻ ምድብ እንጠይቃለን
         if not media_group_buffer[gid]["sent_prompt"]:
             media_group_buffer[gid]["sent_prompt"] = True
             ask_category(message, gid)
     else:
-        media_group_buffer[message.message_id] = {
+        # ነጠላ ፎቶ ከሆነ
+        single_id = f"single_{message.message_id}"
+        media_group_buffer[single_id] = {
             "messages": [message],
-            "sent_prompt": True
+            "chat_id": message.chat.id
         }
-        ask_category(message, message.message_id)
+        ask_category(message, single_id)
 
 def ask_category(message, identifier):
     markup = InlineKeyboardMarkup(row_width=2)
@@ -102,8 +108,9 @@ def callback_category(call):
         return
     
     parts = call.data.split("_")
-    identifier = parts[1]
-    cat_key = "_".join(parts[2:])
+    # identifier የያዘው የ media_group_id ወይም single_id ነው
+    identifier = "_".join(parts[1:-1])
+    cat_key = parts[-1]
     
     admin_sessions[call.from_user.id] = {
         "identifier": identifier,
@@ -139,7 +146,7 @@ def callback_condition(call):
         
         bot.edit_message_text(
             "📝 **አሁን የእቃውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n"
-            "*(ምሳሌ: 12000 ብር | ቦሌ)*", 
+            "*(ምሳሌ: 13000 ብር | ቦሌ)*", 
             call.message.chat.id, 
             call.message.message_id, 
             parse_mode="Markdown"
