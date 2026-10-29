@@ -147,6 +147,15 @@ def callback_condition(call):
                 call.message.message_id, 
                 parse_mode="Markdown"
             )
+        elif cat_key == "wardrobe":
+            admin_sessions[call.from_user.id]["step"] = "waiting_wardrobe_details"
+            bot.edit_message_text(
+                "🚪 **የቁምሳጥኑን መጠን (ሜትር ወይም የበር ብዛት) ይጻፉልኝ**\n\n"
+                "*(ምሳሌ: 2 ሜትር ቁምሳጥን ወይም 2 በር ቁምሳጥን)*", 
+                call.message.chat.id, 
+                call.message.message_id, 
+                parse_mode="Markdown"
+            )
         else:
             admin_sessions[call.from_user.id]["step"] = "waiting_price"
             bot.edit_message_text(
@@ -163,16 +172,11 @@ def handle_tv_details(message):
         return
 
     user_text = message.text.strip().lower()
-    
-    # ስማርት የሚለውን ቃል መያዙን ወይም አለመያዙን እንፈትሻለን
     is_smart = "smart" in user_text
-    
-    # ቁጥሩን (ኢንቹን) ብቻ ከጽሁፍ ውስጥ እናወጣለን
     import re
     numbers = re.findall(r'\d+', user_text)
     inch_val = numbers[0] if numbers else user_text
 
-    # እንደ ሁኔታው ቅርጸቱን እናዘጋጃለን
     if is_smart:
         tv_formatted = f"{inch_val} inch Smart TV"
     else:
@@ -182,6 +186,20 @@ def handle_tv_details(message):
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
     
     bot.reply_to(message, "📝 **አሁን የቲቪውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 29,000 ብር | መገናኛ)*", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_wardrobe_details")
+def handle_wardrobe_details(message):
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return
+
+    user_text = message.text.strip()
+    if "ቁምሳጥን" not in user_text:
+        user_text = f"{user_text} ቁምሳጥን"
+
+    admin_sessions[message.from_user.id]["wardrobe_details"] = user_text
+    admin_sessions[message.from_user.id]["step"] = "waiting_price"
+    
+    bot.reply_to(message, "📝 **አሁን የቁምሳጥኑን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 17,500 ብር | Mexico)*", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_price")
 def handle_price_location(message):
@@ -207,15 +225,21 @@ def handle_price_location(message):
     identifier = session["identifier"]
     condition = session["condition"]
     tv_details = session.get("tv_details", "")
+    wardrobe_details = session.get("wardrobe_details", "")
     
     cat_name, target_channel = CATEGORY_CHANNELS.get(cat_key, ("✨ ተጨማሪ", "@adey_market_other"))
 
-    # ቲቪ ከሆነ የተስተካከለውን ስም ያስገባል, ካልሆነ መደበኛውን የምድብ ስም ይይዛል
-    tv_info_line = f"📺 **የእቃው አይነት፦** {tv_details}\n" if cat_key == "tv" and tv_details else f"📦 **የእቃው አይነት፦** {cat_name}\n"
+    # እንደ እቃው አይነት ትክክለኛውን መስመር መምረጥ
+    if cat_key == "tv" and tv_details:
+        item_type_line = f"📺 **የእቃው አይነት፦** {tv_details}\n"
+    elif cat_key == "wardrobe" and wardrobe_details:
+        item_type_line = f"🚪 **የእቃው አይነት፦** {wardrobe_details}\n"
+    else:
+        item_type_line = f"📦 **የእቃው አይነት፦** {cat_name}\n"
 
     caption_text = (
         "🟡 **ADEY MARKET** 🏠\n\n"
-        f"{tv_info_line}"
+        f"{item_type_line}"
         f"💰 **ዋጋ፦** {price} ብር\n"
         f"📍 **ቦታ፦** {location}\n"
         f"☑ **ሁኔታ፦** {condition}\n"
@@ -243,7 +267,7 @@ def handle_price_location(message):
                 if target_channel != MAIN_CHANNEL:
                     bot.send_media_group(MAIN_CHANNEL, media_list)
                 
-                bot.reply_to(message, f"✅ ቲቪው በትክክል ወደ ቻናሎቹ ተልኳል!", parse_mode="Markdown")
+                bot.reply_to(message, f"✅ እቃው በትክክል ወደ ቻናሎቹ ተልኳል!", parse_mode="Markdown")
         except Exception as e:
             bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
