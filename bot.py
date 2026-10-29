@@ -65,7 +65,6 @@ def handle_admin_upload(message):
 
     admin_id = message.from_user.id
     
-    # ፎቶው በአልበም (Media Group) ከሆነ
     if message.media_group_id:
         gid = message.media_group_id
         if gid not in media_group_buffer:
@@ -75,16 +74,12 @@ def handle_admin_upload(message):
                 "chat_id": message.chat.id
             }
         media_group_buffer[gid]["messages"].append(message)
-        
-        # ፎቶዎቹ በሙሉ እስኪሰባሰቡ ትንሽ እንጠብቃለን
         time.sleep(1.0)
         
-        # ለአልበሙ አንድ ጊዜ ብቻ ምድብ እንጠይቃለን
         if not media_group_buffer[gid]["sent_prompt"]:
             media_group_buffer[gid]["sent_prompt"] = True
             ask_category(message, gid)
     else:
-        # ነጠላ ፎቶ ከሆነ
         single_id = f"single_{message.message_id}"
         media_group_buffer[single_id] = {
             "messages": [message],
@@ -108,7 +103,6 @@ def callback_category(call):
         return
     
     parts = call.data.split("_")
-    # identifier የያዘው የ media_group_id ወይም single_id ነው
     identifier = "_".join(parts[1:-1])
     cat_key = parts[-1]
     
@@ -146,7 +140,7 @@ def callback_condition(call):
         
         bot.edit_message_text(
             "📝 **አሁን የእቃውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n"
-            "*(ምሳሌ: 13000 ብር | ቦሌ)*", 
+            "*(ምሳሌ: 55000 ብር | ሣር ቤት)*", 
             call.message.chat.id, 
             call.message.message_id, 
             parse_mode="Markdown"
@@ -204,11 +198,14 @@ def handle_price_location(message):
         
         try:
             if media_list:
+                # 1. ወደየራሱ ምድብ ቻናል መላክ (ለምሳሌ: ፍሪጅ ከሆነ ወደ ፍሪጅ ቻናል)
                 bot.send_media_group(target_channel, media_list)
+                
+                # 2. ወደ ዋናው ቻናል መላክ (የምድብ ቻናሉ እና ዋናው ቻናል የተለያዩ ከሆኑ)
                 if target_channel != MAIN_CHANNEL:
                     bot.send_media_group(MAIN_CHANNEL, media_list)
                 
-                bot.reply_to(message, f"✅ እቃው በትክክል ወደ **{cat_name}** ({target_channel}) እና ዋናው ቻናል ተልኳል!", parse_mode="Markdown")
+                bot.reply_to(message, f"✅ እቃው በትክክል ወደ **{cat_name}** ({target_channel}) እና ወደ ዋናው ቻናል ({MAIN_CHANNEL}) ተልኳል!", parse_mode="Markdown")
         except Exception as e:
             bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
