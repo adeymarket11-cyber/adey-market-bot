@@ -54,6 +54,8 @@ MENU_TEXT = (
 
 @bot.message_handler(commands=["start", "menu"])
 def show_menu(message):
+    if str(message.from_user.id) in ADMIN_IDS:
+        admin_sessions.pop(message.from_user.id, None)
     bot.send_message(message.chat.id, MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
 
 admin_sessions = {}
@@ -65,6 +67,7 @@ def handle_admin_upload(message):
         return
 
     admin_id = message.from_user.id
+    admin_sessions[admin_id] = {} # አዲስ ፎቶ ሲላክ የቆየውን ሴሽን ያጸዳዋል
     
     if message.media_group_id:
         gid = message.media_group_id
@@ -265,7 +268,6 @@ def handle_price_location(message):
         
         try:
             if media_list:
-                # ፖስቱ ምንም ዓይነት ቁልፍ ሳይኖረው ወደ ቻናሎቹ ይለጥፋል (ለተጠቃሚዎች ንጹህ ሆኖ ይታያል)
                 bot.send_media_group(target_channel, media_list)
                 if target_channel != MAIN_CHANNEL:
                     bot.send_media_group(MAIN_CHANNEL, media_list)
@@ -274,7 +276,6 @@ def handle_price_location(message):
         except Exception as e:
             bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
-# አድሚኑ የተሸጠውን ፖስት ፎርዋርድ አድርጎ ሲልክ "ተሽጧል" የሚያደርገው ሎጂክ
 @bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and (m.forward_from_chat is not None or m.forward_origin is not None))
 def handle_forwarded_sold(message):
     try:
@@ -303,7 +304,7 @@ def handle_forwarded_sold(message):
         else:
             bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
     except Exception as e:
-        bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}\n\n(እባክዎ ቦቱ በዚያ ቻናል ላይ አድሚን መሆኑን እና ፖስቱ ትክክለኛ መሆኑን ያረጋግጡ)")
+        bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
