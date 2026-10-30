@@ -252,10 +252,6 @@ def handle_price_location(message):
         "🤝 **ADEY MARKET**"
     )
 
-    # ፖስቱ ስር "ተሽጧል" የሚል ቁልፍ እንጨምራለን
-    sold_markup = InlineKeyboardMarkup()
-    sold_markup.add(InlineKeyboardButton("🔴 ተሽጧል (Sold Out)", callback_data="mark_sold"))
-
     group_data = media_group_buffer.pop(identifier, None)
     if group_data and group_data["messages"]:
         messages = group_data["messages"]
@@ -269,45 +265,45 @@ def handle_price_location(message):
         
         try:
             if media_list:
-                # ወደ ምድብ ቻናል መለጠፍ
-                sent_msgs = bot.send_media_group(target_channel, media_list)
-                # የመጀመሪያው ፎቶ ስር Sold Out ቁልፍን እናስገባለን
-                if sent_msgs:
-                    bot.edit_message_reply_markup(target_channel, sent_msgs[0].message_id, reply_markup=sold_markup)
-
-                # ዋናው ቻናል ከምድብ ቻናሉ የተለየ ከሆነ እዚያም እንለጥፋለን
+                bot.send_media_group(target_channel, media_list)
                 if target_channel != MAIN_CHANNEL:
-                    sent_main = bot.send_media_group(MAIN_CHANNEL, media_list)
-                    if sent_main:
-                        bot.edit_message_reply_markup(MAIN_CHANNEL, sent_main[0].message_id, reply_markup=sold_markup)
+                    bot.send_media_group(MAIN_CHANNEL, media_list)
                 
                 bot.reply_to(message, f"✅ እቃው በትክክል ወደ ቻናሎቹ ተልኳል!", parse_mode="Markdown")
         except Exception as e:
             bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
-# አድሚኑ "ተሽጧል" የሚለውን ቁልፍ ሲነካ የሚሰራ ሎጂክ
-@bot.callback_query_handler(func=lambda call: call.data == "mark_sold")
-def callback_mark_sold(call):
-    if str(call.from_user.id) not in ADMIN_IDS:
-        bot.answer_callback_query(call.id, "ይህንን ለማድረግ ፈቃድ አለዎት!", show_alert=True)
-        return
-
+# አድሚኑ የተሸጠውን ፖስት ፎርዋርድ አድርጎ ሲልክ "ተሽጧል" የሚያደርገው ሎጂክ
+@bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and (m.forward_from_chat is not None or m.forward_origin is not None))
+def handle_forwarded_sold(message):
     try:
-        current_caption = call.message.caption or ""
+        # ከየትኛው ቻናል እንደተላከ እና የየትኛው መልክት መሆኑን እንለያለን
+        if message.forward_from_chat:
+            chat_id = message.forward_from_chat.id
+            message_id = message.forward_from_message_id
+        elif message.forward_origin and hasattr(message.forward_origin, "chat"):
+            chat_id = message.forward_origin.chat.id
+            message_id = message.forward_origin.message_id
+        else:
+            bot.reply_to(message, "⚠️እባክዎ ፖስቱን በቀጥታ ከቻናሉ ፎርዋርድ ያድርጉት።")
+            return
+
+        current_caption = message.caption or message.text or ""
+        
         if "🔴 [ተሽጧል]" not in current_caption:
             updated_caption = f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{current_caption}"
             
-            # ፖስቱን እናስተካክለዋለን (Caption እንለውጣለን፣ ቁልፎቹን እናጠፋለን)
             bot.edit_message_caption(
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
+                chat_id=chat_id,
+                message_id=message_id,
                 caption=updated_caption,
-                parse_mode="Markdown",
-                reply_markup=None
+                parse_mode="Markdown"
             )
-            bot.answer_callback_query(call.id, "እቃው በተሳካ ሁኔታ 'ተሽጧል' ብሎ ተስተካክሏል!")
+            bot.reply_to(message, "✅ እቃው በተሳካ ሁኔታ 'ተሽጧል / SOLD OUT' ተብሎ ተስተካክሏል!")
+        else:
+            bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
     except Exception as e:
-        bot.answer_callback_query(call.id, f"ስህተት ተፈጥሯል: {e}", show_alert=True)
+        bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}\n\n(እባክዎ ቦቱ በዚያ ቻናል ላይ አድሚን መሆኑን እና ፖስቱ ትክክለኛ መሆኑን ያረጋግጡ)")
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
