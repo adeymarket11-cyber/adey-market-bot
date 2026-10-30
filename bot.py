@@ -61,7 +61,7 @@ def show_menu(message):
 admin_sessions = {}
 media_group_buffer = {}
 
-# 1. ማንኛውም ፎርዋርድ የተደረገ ፖስት ሲመጣ ቅድሚያ ተሰጥቶት ወዲያውኑ ቻናሉ ላይ "ተሽጧል" እንዲል የሚደረግ ጥብቅ ቼክ
+# የድሮ ፖስቶችን ፎርዋርድ ሲያደርጉ Sold Out የሚያደርግ ሎጂክ
 @bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and (m.forward_from_chat is not None or m.forward_origin is not None or m.forward_date is not None))
 def handle_forwarded_sold(message):
     try:
@@ -386,7 +386,7 @@ def callback_mark_sold_from_bot(call):
                 "🔴 **[እቃው ተሽጧል / SOLD OUT ተብሎ በቻናሉ ተስተካክሏል!]**",
                 call.message.chat.id,
                 call.message.message_id,
-                parse_space="Markdown",
+                parse_mode="Markdown",
                 reply_markup=None
             )
             bot.answer_callback_query(call.id, "እቃው ቻናሉ ላይ 'ተሽጧል' ተብሎ ተስተካክሏል!")
