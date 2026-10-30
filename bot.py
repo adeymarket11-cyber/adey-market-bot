@@ -61,13 +61,44 @@ def show_menu(message):
 admin_sessions = {}
 media_group_buffer = {}
 
+# ፎርዋርድ የተደረገ ፖስት ሲሆን በመጀመሪያ ደረጃ Sold Out እንዲያደርግ የተስተካከለ ክፍል
+@bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and (m.forward_from_chat is not None or m.forward_origin is not None))
+def handle_forwarded_sold(message):
+    try:
+        if message.forward_from_chat:
+            chat_id = message.forward_from_chat.id
+            message_id = message.forward_from_message_id
+        elif message.forward_origin and hasattr(message.forward_origin, "chat"):
+            chat_id = message.forward_origin.chat.id
+            message_id = message.forward_origin.message_id
+        else:
+            bot.reply_to(message, "⚠️እባክዎ ፖስቱን በቀጥታ ከቻናሉ ፎርዋርድ ያድርጉት።")
+            return
+
+        current_caption = message.caption or message.text or ""
+        
+        if "🔴 [ተሽጧል]" not in current_caption and "🔴 **[ተሽጧል" not in current_caption:
+            updated_caption = f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{current_caption}"
+            
+            bot.edit_message_caption(
+                chat_id=chat_id,
+                message_id=message_id,
+                caption=updated_caption,
+                parse_mode="Markdown"
+            )
+            bot.reply_to(message, "✅ እቃው በተሳካ ሁኔታ 'ተሽጧል / SOLD OUT' ተብሎ ተስተካክሏል!")
+        else:
+            bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
+    except Exception as e:
+        bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
+
 @bot.message_handler(content_types=['photo', 'video'])
 def handle_admin_upload(message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return
 
     admin_id = message.from_user.id
-    admin_sessions[admin_id] = {} # አዲስ ፎቶ ሲላክ የቆየውን ሴሽን ያጸዳዋል
+    admin_sessions[admin_id] = {}
     
     if message.media_group_id:
         gid = message.media_group_id
@@ -275,36 +306,6 @@ def handle_price_location(message):
                 bot.reply_to(message, f"✅ እቃው በትክክል ወደ ቻናሎቹ ተልኳል!", parse_mode="Markdown")
         except Exception as e:
             bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
-
-@bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and (m.forward_from_chat is not None or m.forward_origin is not None))
-def handle_forwarded_sold(message):
-    try:
-        if message.forward_from_chat:
-            chat_id = message.forward_from_chat.id
-            message_id = message.forward_from_message_id
-        elif message.forward_origin and hasattr(message.forward_origin, "chat"):
-            chat_id = message.forward_origin.chat.id
-            message_id = message.forward_origin.message_id
-        else:
-            bot.reply_to(message, "⚠️እባክዎ ፖስቱን በቀጥታ ከቻናሉ ፎርዋርድ ያድርጉት።")
-            return
-
-        current_caption = message.caption or message.text or ""
-        
-        if "🔴 [ተሽጧል]" not in current_caption and "🔴 **[ተሽጧል" not in current_caption:
-            updated_caption = f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{current_caption}"
-            
-            bot.edit_message_caption(
-                chat_id=chat_id,
-                message_id=message_id,
-                caption=updated_caption,
-                parse_mode="Markdown"
-            )
-            bot.reply_to(message, "✅ እቃው በተሳካ ሁኔታ 'ተሽጧል / SOLD OUT' ተብሎ ተስተካክሏል!")
-        else:
-            bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
-    except Exception as e:
-        bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
