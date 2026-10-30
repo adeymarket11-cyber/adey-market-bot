@@ -69,11 +69,13 @@ def clean_caption_for_sold(old_caption):
     lines = old_caption.split("\n")
     new_lines = []
     for line in lines:
-        # ዋጋ እና ቦታ የያዙ መስመሮች እንዳይገቡ በሰፊው እንለያቸዋለን
         lower_line = line.lower()
-        if "ዋጋ" in lower_line or "ቦታ" in lower_line or "price" in lower_line or "location" in lower_line:
-            continue
-        new_lines.append(line)
+        if "ዋጋ፦" in line or "ዋጋ:" in line or "price" in lower_line:
+            new_lines.append("💰 **ዋጋ፦**")
+        elif "ቦታ፦" in line or "ቦታ:" in line or "location" in lower_line:
+            new_lines.append("📍 **ቦታ፦**")
+        else:
+            new_lines.append(line)
     
     cleaned_body = "\n".join(new_lines).strip()
     if "🔴 [ተሽጧል]" not in cleaned_body and "🔴 **[ተሽጧል" not in cleaned_body:
@@ -115,7 +117,7 @@ def handle_post_link_sold(message):
                         caption=updated_caption,
                         parse_mode="Markdown"
                     )
-                bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ዋጋ እና አድራሻው ጠፍቷል!")
+                bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ብሩ እና አድራሻው ብቻ ጠፍተዋል!")
             else:
                 bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
         else:
@@ -468,13 +470,13 @@ def callback_mark_sold_from_bot(call):
 
         if success:
             bot.edit_message_text(
-                "🔴 **[እቃው ተሽጧል / SOLD OUT ተብሎ ዋጋና አድራሻው ጠፍቷል!]**",
+                "🔴 **[እቃው ተሽጧል / SOLD OUT ተብሎ ተስተካክሏል!]**",
                 call.message.chat.id,
                 call.message.message_id,
                 parse_mode="Markdown",
                 reply_markup=None
             )
-            bot.answer_callback_query(call.id, "እቃው ተሽጧል ተብሎ ዋጋና አድራሻው ተወግዷል!")
+            bot.answer_callback_query(call.id, "እቃው ተሽጧል ተብሎ ብሩ እና ቦታው ተወግደዋል!")
         else:
             bot.answer_callback_query(call.id, "ተስተካክሏል ወይም የተፈጠረ ስህተት አለ።", show_alert=True)
     except Exception as e:
