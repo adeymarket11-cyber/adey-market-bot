@@ -265,6 +265,7 @@ def handle_price_location(message):
         
         try:
             if media_list:
+                # ፖስቱ ምንም ዓይነት ቁልፍ ሳይኖረው ወደ ቻናሎቹ ይለጥፋል (ለተጠቃሚዎች ንጹህ ሆኖ ይታያል)
                 bot.send_media_group(target_channel, media_list)
                 if target_channel != MAIN_CHANNEL:
                     bot.send_media_group(MAIN_CHANNEL, media_list)
@@ -277,7 +278,6 @@ def handle_price_location(message):
 @bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and (m.forward_from_chat is not None or m.forward_origin is not None))
 def handle_forwarded_sold(message):
     try:
-        # ከየትኛው ቻናል እንደተላከ እና የየትኛው መልክት መሆኑን እንለያለን
         if message.forward_from_chat:
             chat_id = message.forward_from_chat.id
             message_id = message.forward_from_message_id
@@ -290,7 +290,7 @@ def handle_forwarded_sold(message):
 
         current_caption = message.caption or message.text or ""
         
-        if "🔴 [ተሽጧል]" not in current_caption:
+        if "🔴 [ተሽጧል]" not in current_caption and "🔴 **[ተሽጧል" not in current_caption:
             updated_caption = f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{current_caption}"
             
             bot.edit_message_caption(
