@@ -17,7 +17,9 @@ CATEGORY_CHANNELS = {
     "washing": ("🧺 Washing Machine", "@adey_market_washingmachine"),
     "fridge": ("🧊 ፍሪጅ", "@adey_market_Refrigerator"),
     "sofa": ("🛋️ ሶፋ", "@adey_market_sofa"),
-    "tv": ("📺 TV / ቲቪ ስታንድ", "@adey_market_Tv"),
+    "tv": ("📺 ቲቪ (TV)", "@adey_market_Tv"),
+    "tvstand": ("🪞 TV Stand", "@adeymarket_tvstand"),
+    "centertable": ("🛋️ የመሀል ጠረቤዛ", "@adeymarket_center_table"),
     "wardrobe": ("🚪 ቁምሳጥን", "@adey_market_Wardrobe"),
     "dining": ("🍽️ የምግብ ጠረቤዛ", "@adey_market_dining_table"),
     "furniture": ("🪑 ፈርኒቸር", "@adey_market_furniture"),
@@ -29,7 +31,9 @@ CATEGORIES_MENU = [
     ("🧺 Washing Machine", "https://t.me/adey_market_washingmachine"),
     ("🧊 ፍሪጅ", "https://t.me/adey_market_Refrigerator"),
     ("🛋️ ሶፋ", "https://t.me/adey_market_sofa"),
-    ("📺 TV / ቲቪ ስታንድ", "https://t.me/adey_market_Tv"),
+    ("📺 ቲቪ (TV)", "https://t.me/adey_market_Tv"),
+    ("🪞 TV Stand", "https://t.me/adeymarket_tvstand"),
+    ("🛋️ የመሀል ጠረቤዛ", "https://t.me/adeymarket_center_table"),
     ("🚪 ቁምሳጥን", "https://t.me/adey_market_Wardrobe"),
     ("🍽️ የምግብ ጠረቤዛ", "https://t.me/adey_market_dining_table"),
     ("🪑 ፈርኒቸር", "https://t.me/adey_market_furniture"),
@@ -61,7 +65,6 @@ def show_menu(message):
 admin_sessions = {}
 media_group_buffer = {}
 
-# ፖስት ሊንክ (ለምሳሌ t.me/adey_market_bed/12 ወይም t.me/adeymarket3/3154) ሲላክ የሚሰራ ኃይለኛ ቼክ
 @bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and m.text and "t.me/" in m.text)
 def handle_post_link_sold(message):
     try:
@@ -75,7 +78,6 @@ def handle_post_link_sold(message):
                 target_chan = chan_part
             msg_id = int(parts[1])
 
-            # ከቻናሉ ላይ መልእክቱን በማንበብ ძველ ካፕሽኑን እናገኛለን
             forwarded = bot.forward_message(message.chat.id, target_chan, msg_id)
             old_caption = forwarded.caption or forwarded.text or ""
             forwarded_id = forwarded.message_id
@@ -199,6 +201,24 @@ def callback_condition(call):
                 call.message.message_id, 
                 parse_mode="Markdown"
             )
+        elif cat_key == "tvstand":
+            admin_sessions[call.from_user.id]["step"] = "waiting_tvstand_details"
+            bot.edit_message_text(
+                "🪞 **የ TV Stand መጠን ወይም ዓይነት ይጻፉልኝ**\n\n"
+                "*(ምሳሌ: 1.2 ሜትር ወይም ዘመናዊ TV Stand)*", 
+                call.message.chat.id, 
+                call.message.message_id, 
+                parse_mode="Markdown"
+            )
+        elif cat_key == "centertable":
+            admin_sessions[call.from_user.id]["step"] = "waiting_centertable_details"
+            bot.edit_message_text(
+                "🛋️ **የመሀል ጠረቤዛውን ዓይነት ወይም መጠን ይጻፉልኝ**\n\n"
+                "*(ምሳሌ: ማርብል ጠረቤዛ ወይም የእንጨት)*", 
+                call.message.chat.id, 
+                call.message.message_id, 
+                parse_mode="Markdown"
+            )
         elif cat_key == "wardrobe":
             admin_sessions[call.from_user.id]["step"] = "waiting_wardrobe_details"
             bot.edit_message_text(
@@ -238,6 +258,38 @@ def handle_tv_details(message):
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
     
     bot.reply_to(message, "📝 **አሁን የቲቪውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 29,000 ብር | መገናኛ)*", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_tvstand_details")
+def handle_tvstand_details(message):
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return
+
+    user_text = message.text.strip()
+    if "tv stand" not in user_text.lower():
+        tvstand_formatted = f"{user_text} TV Stand"
+    else:
+        tvstand_formatted = user_text
+
+    admin_sessions[message.from_user.id]["tvstand_details"] = tvstand_formatted
+    admin_sessions[message.from_user.id]["step"] = "waiting_price"
+    
+    bot.reply_to(message, "📝 **አሁን የ TV Stand ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 8,500 ብር | ቦሌ)*", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_centertable_details")
+def handle_centertable_details(message):
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return
+
+    user_text = message.text.strip()
+    if "ጠረቤዛ" not in user_text:
+        ct_formatted = f"{user_text} የመሀል ጠረቤዛ"
+    else:
+        ct_formatted = user_text
+
+    admin_sessions[message.from_user.id]["centertable_details"] = ct_formatted
+    admin_sessions[message.from_user.id]["step"] = "waiting_price"
+    
+    bot.reply_to(message, "📝 **አሁን የመሀል ጠረቤዛውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 6,000 ብር | ፒያሳ)*", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_wardrobe_details")
 def handle_wardrobe_details(message):
@@ -279,12 +331,18 @@ def handle_price_location(message):
     identifier = session["identifier"]
     condition = session["condition"]
     tv_details = session.get("tv_details", "")
+    tvstand_details = session.get("tvstand_details", "")
+    centertable_details = session.get("centertable_details", "")
     wardrobe_details = session.get("wardrobe_details", "")
     
     cat_name, target_channel = CATEGORY_CHANNELS.get(cat_key, ("✨ ተጨማሪ", "@adey_market_other"))
 
     if cat_key == "tv" and tv_details:
         item_type_line = f"📦 **የእቃው አይነት፦** {tv_details}\n"
+    elif cat_key == "tvstand" and tvstand_details:
+        item_type_line = f"📦 **የእቃው አይነት፦** {tvstand_details}\n"
+    elif cat_key == "centertable" and centertable_details:
+        item_type_line = f"📦 **የእቃው አይነት፦** {centertable_details}\n"
     elif cat_key == "wardrobe" and wardrobe_details:
         item_type_line = f"📦 **የእቃው አይነት፦** {wardrobe_details}\n"
     else:
