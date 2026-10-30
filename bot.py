@@ -69,7 +69,9 @@ def clean_caption_for_sold(old_caption):
     lines = old_caption.split("\n")
     new_lines = []
     for line in lines:
-        if "💰 **ዋጋ፦**" in line or "📍 **ቦታ፦**" in line:
+        # ዋጋ እና ቦታ የያዙ መስመሮች እንዳይገቡ በሰፊው እንለያቸዋለን
+        lower_line = line.lower()
+        if "ዋጋ" in lower_line or "ቦታ" in lower_line or "price" in lower_line or "location" in lower_line:
             continue
         new_lines.append(line)
     
@@ -113,7 +115,7 @@ def handle_post_link_sold(message):
                         caption=updated_caption,
                         parse_mode="Markdown"
                     )
-                bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ተስተካክሏል (ዋጋ እና ቦታው ጠፍቷል)!")
+                bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ዋጋ እና አድራሻው ጠፍቷል!")
             else:
                 bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
         else:
