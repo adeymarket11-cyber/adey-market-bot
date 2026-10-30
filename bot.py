@@ -5,7 +5,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 
-BOT_TOKEN = "8780198432:AAH6rW5Miw2nP9HMZ67lqyUOKmDjGPrGYQk"
+BOT_TOKEN = "8780198432:AAGg6BsFGIevBGeCsVU84EzBDPfAyPqXZaQ"
 ADMIN_IDS = ["8703011579", "8144813729", "8994655471"]
 
 bot = telebot.TeleBot(BOT_TOKEN)
