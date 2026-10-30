@@ -65,6 +65,19 @@ def show_menu(message):
 admin_sessions = {}
 media_group_buffer = {}
 
+def clean_caption_for_sold(old_caption):
+    lines = old_caption.split("\n")
+    new_lines = []
+    for line in lines:
+        if "💰 **ዋጋ፦**" in line or "📍 **ቦታ፦**" in line:
+            continue
+        new_lines.append(line)
+    
+    cleaned_body = "\n".join(new_lines).strip()
+    if "🔴 [ተሽጧል]" not in cleaned_body and "🔴 **[ተሽጧል" not in cleaned_body:
+        return f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{cleaned_body}"
+    return cleaned_body
+
 @bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and m.text and "t.me/" in m.text)
 def handle_post_link_sold(message):
     try:
@@ -84,7 +97,7 @@ def handle_post_link_sold(message):
             bot.delete_message(message.chat.id, forwarded_id)
 
             if "🔴 [ተሽጧል]" not in old_caption and "🔴 **[ተሽጧል" not in old_caption:
-                updated_caption = f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{old_caption}"
+                updated_caption = clean_caption_for_sold(old_caption)
                 
                 if forwarded.photo:
                     photo_file_id = forwarded.photo[-1].file_id
@@ -100,7 +113,7 @@ def handle_post_link_sold(message):
                         caption=updated_caption,
                         parse_mode="Markdown"
                     )
-                bot.reply_to(message, "✅ እቃው በተሳካ ሁኔታ 'ተሽጧል / SOLD OUT' ተብሎ ተስተካክሏል!")
+                bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ተስተካክሏል (ዋጋ እና ቦታው ጠፍቷል)!")
             else:
                 bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
         else:
@@ -410,7 +423,7 @@ def callback_mark_sold_from_bot(call):
             bot.delete_message(call.message.chat.id, forwarded_id)
 
             if "🔴 [ተሽጧል]" not in old_caption and "🔴 **[ተሽጧል" not in old_caption:
-                updated_caption = f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{old_caption}"
+                updated_caption = clean_caption_for_sold(old_caption)
                 
                 if forwarded.photo:
                     photo_file_id = forwarded.photo[-1].file_id
@@ -439,7 +452,7 @@ def callback_mark_sold_from_bot(call):
                 bot.delete_message(call.message.chat.id, forwarded_main_id)
 
                 if "🔴 [ተሽጧል]" not in old_caption_main and "🔴 **[ተሽጧል" not in old_caption_main:
-                    updated_caption_main = f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{old_caption_main}"
+                    updated_caption_main = clean_caption_for_sold(old_caption_main)
                     
                     if forwarded_main.photo:
                         photo_file_id_main = forwarded_main.photo[-1].file_id
@@ -453,13 +466,13 @@ def callback_mark_sold_from_bot(call):
 
         if success:
             bot.edit_message_text(
-                "🔴 **[እቃው ተሽጧል / SOLD OUT ተብሎ በቻናሉ ተስተካክሏል!]**",
+                "🔴 **[እቃው ተሽጧል / SOLD OUT ተብሎ ዋጋና አድራሻው ጠፍቷል!]**",
                 call.message.chat.id,
                 call.message.message_id,
                 parse_mode="Markdown",
                 reply_markup=None
             )
-            bot.answer_callback_query(call.id, "እቃው ቻናሉ ላይ 'ተሽጧል' ተብሎ ተስተካክሏል!")
+            bot.answer_callback_query(call.id, "እቃው ተሽጧል ተብሎ ዋጋና አድራሻው ተወግዷል!")
         else:
             bot.answer_callback_query(call.id, "ተስተካክሏል ወይም የተፈጠረ ስህተት አለ።", show_alert=True)
     except Exception as e:
