@@ -11,7 +11,6 @@ ADMIN_IDS = ["8703011579", "8144813729", "8994655471"]
 bot = telebot.TeleBot(BOT_TOKEN)
 MAIN_CHANNEL = "@adeymarket3"
 MAIN_CHANNEL_LINK = "https://t.me/adeymarket3"
-ARCHIVE_CHANNEL = "@adey_market_archive"
 
 CATEGORY_CHANNELS = {
     "bed": ("🛏️ አልጋ", "@adey_market_bed"),
@@ -46,12 +45,7 @@ def make_menu():
     buttons = [InlineKeyboardButton(name, url=url) for name, url in CATEGORIES_MENU]
     for i in range(0, len(buttons), 2):
         markup.add(*buttons[i:i+2])
-    
-    # የፍለጋ እና የአስተያየት ቁልፎች ሙሉ በሙሉ ተወግደዋል
-    markup.add(
-        InlineKeyboardButton("📦 የተሸጡ ዕቃዎች (Archive)", url="https://t.me/adey_market_archive"),
-        InlineKeyboardButton("📩 Inbox ለማውራት", url="https://t.me/adeyused")
-    )
+    markup.add(InlineKeyboardButton("📩 Inbox ለማውራት", url="https://t.me/adeyused"))
     return markup
 
 MENU_TEXT = (
@@ -123,13 +117,7 @@ def handle_post_link_sold(message):
                         caption=updated_caption,
                         parse_mode="Markdown"
                     )
-                
-                try:
-                    bot.forward_message(ARCHIVE_CHANNEL, target_chan, msg_id)
-                except Exception as ex:
-                    print(f"Archive error: {ex}")
-
-                bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!")
+                bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ብሩ እና አድራሻው ብቻ ጠፍተዋል!")
             else:
                 bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
         else:
@@ -334,7 +322,7 @@ def handle_wardrobe_details(message):
     admin_sessions[message.from_user.id]["wardrobe_details"] = wardrobe_formatted
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
     
-    bot.reply_to(message, "📝 **አሁን የቁምሳጥኑን መጠን ወይም ዓይነት ይጻፉልኝ**\n\n*(ምሳሌ: 17,500 ብር | Mexico)*", parse_mode="Markdown")
+    bot.reply_to(message, "📝 **አሁን የቁምሳጥኑን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 17,500 ብር | Mexico)*", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_price")
 def handle_price_location(message):
@@ -457,12 +445,6 @@ def callback_mark_sold_from_bot(call):
                         parse_mode="Markdown"
                     )
                     success = True
-                
-                try:
-                    bot.forward_message(ARCHIVE_CHANNEL, target_channel, int(target_msg_id))
-                except Exception as ex:
-                    print(f"Archive forward error: {ex}")
-
         except Exception as ex:
             print(f"Target channel update error: {ex}")
 
@@ -488,13 +470,13 @@ def callback_mark_sold_from_bot(call):
 
         if success:
             bot.edit_message_text(
-                "🔴 **[እቃው ተሽጧል / SOLD OUT ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!]**",
+                "🔴 **[እቃው ተሽጧል / SOLD OUT ተብሎ ተስተካክሏል!]**",
                 call.message.chat.id,
                 call.message.message_id,
                 parse_mode="Markdown",
                 reply_markup=None
             )
-            bot.answer_callback_query(call.id, "እቃው ተሽጧል ተብሎ ተስተካክሏል!")
+            bot.answer_callback_query(call.id, "እቃው ተሽጧል ተብሎ ብሩ እና ቦታው ተወግደዋል!")
         else:
             bot.answer_callback_query(call.id, "ተስተካክሏል ወይም የተፈጠረ ስህተት አለ።", show_alert=True)
     except Exception as e:
