@@ -252,6 +252,10 @@ def handle_price_location(message):
         "🤝 **ADEY MARKET**"
     )
 
+    # ፖስቱ ስር "ተሽጧል" የሚል ቁልፍ እንጨምራለን
+    sold_markup = InlineKeyboardMarkup()
+    sold_markup.add(InlineKeyboardButton("🔴 ተሽጧል (Sold Out)", callback_data="mark_sold"))
+
     group_data = media_group_buffer.pop(identifier, None)
     if group_data and group_data["messages"]:
         messages = group_data["messages"]
@@ -265,13 +269,45 @@ def handle_price_location(message):
         
         try:
             if media_list:
-                bot.send_media_group(target_channel, media_list)
+                # ወደ ምድብ ቻናል መለጠፍ
+                sent_msgs = bot.send_media_group(target_channel, media_list)
+                # የመጀመሪያው ፎቶ ስር Sold Out ቁልፍን እናስገባለን
+                if sent_msgs:
+                    bot.edit_message_reply_markup(target_channel, sent_msgs[0].message_id, reply_markup=sold_markup)
+
+                # ዋናው ቻናል ከምድብ ቻናሉ የተለየ ከሆነ እዚያም እንለጥፋለን
                 if target_channel != MAIN_CHANNEL:
-                    bot.send_media_group(MAIN_CHANNEL, media_list)
+                    sent_main = bot.send_media_group(MAIN_CHANNEL, media_list)
+                    if sent_main:
+                        bot.edit_message_reply_markup(MAIN_CHANNEL, sent_main[0].message_id, reply_markup=sold_markup)
                 
                 bot.reply_to(message, f"✅ እቃው በትክክል ወደ ቻናሎቹ ተልኳል!", parse_mode="Markdown")
         except Exception as e:
             bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
+
+# አድሚኑ "ተሽጧል" የሚለውን ቁልፍ ሲነካ የሚሰራ ሎጂክ
+@bot.callback_query_handler(func=lambda call: call.data == "mark_sold")
+def callback_mark_sold(call):
+    if str(call.from_user.id) not in ADMIN_IDS:
+        bot.answer_callback_query(call.id, "ይህንን ለማድረግ ፈቃድ አለዎት!", show_alert=True)
+        return
+
+    try:
+        current_caption = call.message.caption or ""
+        if "🔴 [ተሽጧል]" not in current_caption:
+            updated_caption = f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{current_caption}"
+            
+            # ፖስቱን እናስተካክለዋለን (Caption እንለውጣለን፣ ቁልፎቹን እናጠፋለን)
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=updated_caption,
+                parse_mode="Markdown",
+                reply_markup=None
+            )
+            bot.answer_callback_query(call.id, "እቃው በተሳካ ሁኔታ 'ተሽጧል' ብሎ ተስተካክሏል!")
+    except Exception as e:
+        bot.answer_callback_query(call.id, f"ስህተት ተፈጥሯል: {e}", show_alert=True)
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
