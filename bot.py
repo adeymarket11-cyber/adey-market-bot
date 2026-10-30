@@ -61,38 +61,7 @@ def show_menu(message):
 admin_sessions = {}
 media_group_buffer = {}
 
-# ፎርዋርድ የተደረገ ፖስት ሲሆን በመጀመሪያ ደረጃ Sold Out እንዲያደርግ የተስተካከለ ክፍል
-@bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and (m.forward_from_chat is not None or m.forward_origin is not None))
-def handle_forwarded_sold(message):
-    try:
-        if message.forward_from_chat:
-            chat_id = message.forward_from_chat.id
-            message_id = message.forward_from_message_id
-        elif message.forward_origin and hasattr(message.forward_origin, "chat"):
-            chat_id = message.forward_origin.chat.id
-            message_id = message.forward_origin.message_id
-        else:
-            bot.reply_to(message, "⚠️እባክዎ ፖስቱን በቀጥታ ከቻናሉ ፎርዋርድ ያድርጉት።")
-            return
-
-        current_caption = message.caption or message.text or ""
-        
-        if "🔴 [ተሽጧል]" not in current_caption and "🔴 **[ተሽጧል" not in current_caption:
-            updated_caption = f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{current_caption}"
-            
-            bot.edit_message_caption(
-                chat_id=chat_id,
-                message_id=message_id,
-                caption=updated_caption,
-                parse_mode="Markdown"
-            )
-            bot.reply_to(message, "✅ እቃው በተሳካ ሁኔታ 'ተሽጧል / SOLD OUT' ተብሎ ተስተካክሏል!")
-        else:
-            bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
-    except Exception as e:
-        bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
-
-@bot.message_handler(content_types=['photo', 'video'])
+@bot.message_handler(content_types=['photo', 'video'], chat_types=['private'])
 def handle_admin_upload(message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return
@@ -299,13 +268,76 @@ def handle_price_location(message):
         
         try:
             if media_list:
-                bot.send_media_group(target_channel, media_list)
+                # 1. ወደ ምድብ ቻናል መለጠፍ (ለተጠቃሚዎች ንጹህ ፖስት ይሄዳል)
+                sent_target = bot.send_media_group(target_channel, media_list)
+                target_msg_id = sent_target[0].message_id if sent_target else None
+
+                # 2. ዋናው ቻናል የተለየ ከሆነ እዚያም መለጠፍ
+                main_msg_id = None
                 if target_channel != MAIN_CHANNEL:
-                    bot.send_media_group(MAIN_CHANNEL, media_list)
+                    sent_main = bot.send_media_group(MAIN_CHANNEL, media_list)
+                    main_msg_id = sent_main[0].message_id if sent_main else None
                 
-                bot.reply_to(message, f"✅ እቃው በትክክል ወደ ቻናሎቹ ተልኳል!", parse_mode="Markdown")
+                # 3. አድሚኑ ጋር ቻት ውስጥ "ተሽጧል" የሚል ቁልፍ ያለው መልእክት መላክ
+                # (ይህ ቁልፍ ሲነካ የትኛው ቻናል ላይ ያለው ፖስት ማስተካከል እንዳለበት ከነ ID-ው ይያያዛል)
+                target_chat_str = str(target_channel)
+                main_chat_str = str(MAIN_CHANNEL)
+                
+                markup = InlineKeyboardMarkup()
+                markup.add(InlineKeyboardButton("🔴 ተሽጧል (Sold Out)", callback_data=f"sold_{target_chat_str}_{target_msg_id}_{main_msg_id}"))
+
+                bot.reply_to(message, "✅ እቃው በትክክል ወደ ቻናሎቹ ተልኳል!\n\nይህ እቃ ሲሸጥ ከታች ያለውን ቁልፍ ይንኩ:", parse_mode="Markdown", reply_markup=markup)
         except Exception as e:
             bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
+
+# አድሚኑ ቦቱ ጋር የመጣውን "ተሽጧል" ቁልፍ ሲነካ የሚሰራ ሎጂክ
+@bot.callback_query_handler(func=lambda call: call.data.startswith("sold_"))
+def callback_mark_sold_from_bot(call):
+    if str(call.from_user.id) not in ADMIN_IDS:
+        bot.answer_callback_query(call.id, "ይህንን ለማድረግ ፈቃድ የለዎትም!", show_alert=True)
+        return
+
+    parts = call.data.split("_")
+    # format: sold_<target_channel>_<target_msg_id>_<main_msg_id>
+    # channel name can contain underscore or be like @adey_market_bed
+    # let's parse safely from the back
+    main_msg_id = parts[-1]
+    target_msg_id = parts[-2]
+    target_channel = "_".join(parts[1:-2])
+
+    try:
+        # 1. በምድብ ቻናሉ ላይ ያለውን ፖስት ማስተካከል
+        try:
+            msg = bot.get_message(target_channel, int(target_msg_id))
+            current_caption = msg.caption or ""
+            if "🔴 [ተሽጧል]" not in current_caption:
+                updated_caption = f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{current_caption}"
+                bot.edit_message_caption(chat_id=target_channel, message_id=int(target_msg_id), caption=updated_caption, parse_mode="Markdown")
+        except Exception as ex:
+            print(f"Target channel edit error: {ex}")
+
+        # 2. ዋናው ቻናል ላይ ያለውን ፖስት ማስተካከል
+        if main_msg_id != "None" and target_channel != MAIN_CHANNEL:
+            try:
+                msg_main = bot.get_message(MAIN_CHANNEL, int(main_msg_id))
+                current_caption_main = msg_main.caption or ""
+                if "🔴 [ተሽጧል]" not in current_caption_main:
+                    updated_caption_main = f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{current_caption_main}"
+                    bot.edit_message_caption(chat_id=MAIN_CHANNEL, message_id=int(main_msg_id), caption=updated_caption_main, parse_mode="Markdown")
+            except Exception as ex:
+                print(f"Main channel edit error: {ex}")
+
+        # 3. የቦቱን መልእክት ማስተካከል (ቁልፉን ማጥፋት እና ተሸጧል ማለት)
+        bot.edit_message_text(
+            "🔴 **[እቃው ተሽጧል / SOLD OUT ተብሎ ተስተካክሏል!]**",
+            call.message.chat.id,
+            call.message.message_id,
+            parse_mode="Markdown",
+            reply_markup=None
+        )
+        bot.answer_callback_query(call.id, "እቃው በተሳካ ሁኔታ ተሽጧል ተብሎ ተስተካክሏል!")
+    except Exception as e:
+        bot.answer_callback_query(call.id, f"ስህተት ተፈጥሯል: {e}", show_alert=True)
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
