@@ -11,6 +11,8 @@ ADMIN_IDS = ["8703011579", "8144813729", "8994655471"]
 bot = telebot.TeleBot(BOT_TOKEN)
 MAIN_CHANNEL = "@adeymarket3"
 MAIN_CHANNEL_LINK = "https://t.me/adeymarket3"
+ARCHIVE_CHANNEL = "@adey_market_archive"
+REVIEW_CHANNEL = "@adey_market_review"
 
 CATEGORY_CHANNELS = {
     "bed": ("🛏️ አልጋ", "@adey_market_bed"),
@@ -45,7 +47,15 @@ def make_menu():
     buttons = [InlineKeyboardButton(name, url=url) for name, url in CATEGORIES_MENU]
     for i in range(0, len(buttons), 2):
         markup.add(*buttons[i:i+2])
-    markup.add(InlineKeyboardButton("📩 Inbox ለማውራት", url="https://t.me/adeyused"))
+    
+    markup.add(
+        InlineKeyboardButton("🔎 ዕቃ ለመፈለግ", callback_data="user_search"),
+        InlineKeyboardButton("⭐ አስተያየት ለመስጠት", callback_data="user_review")
+    )
+    markup.add(
+        InlineKeyboardButton("📦 የተሸጡ ዕቃዎች (Archive)", url="https://t.me/adey_market_archive"),
+        InlineKeyboardButton("📩 Inbox ለማውራት", url="https://t.me/adeyused")
+    )
     return markup
 
 MENU_TEXT = (
@@ -56,10 +66,13 @@ MENU_TEXT = (
     "📩 **Telegram Inbox:** @adeyused"
 )
 
+user_states = {}
+
 @bot.message_handler(commands=["start", "menu"])
 def show_menu(message):
     if str(message.from_user.id) in ADMIN_IDS:
         admin_sessions.pop(message.from_user.id, None)
+    user_states.pop(message.from_user.id, None)
     bot.send_message(message.chat.id, MENU_TEXT, reply_markup=make_menu(), parse_mode="Markdown")
 
 admin_sessions = {}
@@ -81,6 +94,77 @@ def clean_caption_for_sold(old_caption):
     if "🔴 [ተሽጧል]" not in cleaned_body and "🔴 **[ተሽጧል" not in cleaned_body:
         return f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{cleaned_body}"
     return cleaned_body
+
+# User Review & Search Handlers
+@bot.callback_query_handler(func=lambda call: call.data in ["user_search", "user_review"] or call.data.startswith("rate_"))
+def handle_user_callbacks(call):
+    if call.data == "user_search":
+        user_states[call.from_user.id] = {"step": "waiting_search_query"}
+        bot.send_message(call.message.chat.id, "🔎 **የሚፈልጉትን ዕቃ ስም ይጻፉልኝ፦**\n*(ምሳሌ: ሶፋ፣ ፍሪጅ፣ ቲቪ)*", parse_mode="Markdown")
+        bot.answer_callback_query(call.id)
+    
+    elif call.data == "user_review":
+        markup = InlineKeyboardMarkup(row_width=5)
+        markup.add(
+            InlineKeyboardButton("⭐ 1", callback_data="rate_1"),
+            InlineKeyboardButton("⭐ 2", callback_data="rate_2"),
+            InlineKeyboardButton("⭐ 3", callback_data="rate_3"),
+            InlineKeyboardButton("⭐ 4", callback_data="rate_4"),
+            InlineKeyboardButton("⭐ 5", callback_data="rate_5")
+        )
+        bot.send_message(call.message.chat.id, "🌟 **ለአገልግሎታችን ስንት ኮከብ መስጠት ይፈልጋሉ?**", reply_markup=markup, parse_mode="Markdown")
+        bot.answer_callback_query(call.id)
+        
+    elif call.data.startswith("rate_"):
+        rating = call.data.split("_")[1]
+        user_states[call.from_user.id] = {"step": "waiting_review_text", "rating": rating}
+        bot.send_message(call.message.chat.id, f"🙏 **ስለሰጡን {rating} ኮከብ እናመሰግናለን!**\nእባክዎ ተጨማሪ አስተያየት ካልዎት ይጻፉልን፦", parse_mode="Markdown")
+        bot.answer_callback_query(call.id)
+
+@bot.message_handler(func=lambda m: str(m.from_user.id) not in ADMIN_IDS and m.from_user.id in user_states)
+def handle_user_inputs(message):
+    state = user_states.get(message.from_user.id, {})
+    step = state.get("step")
+
+    if step == "waiting_search_query":
+        query = message.text.strip().lower()
+        found = []
+        for key, (name, link) in CATEGORY_CHANNELS.items():
+            if query in name.lower() or query in key:
+                found.append((name, link))
+        
+        if found:
+            text = f"🔎 **የሚከተሉትን ምድቦች አግኝተናል፦**\n\n"
+            markup = InlineKeyboardMarkup()
+            for name, link in found:
+                markup.add(InlineKeyboardButton(name, url=f"https://t.me/{link.replace('@', '')}"))
+            bot.reply_to(message, text, reply_markup=markup, parse_mode="Markdown")
+        else:
+            bot.reply_to(
+                message, 
+                "ℹ️ **ለጥያቄዎ አግባብ ያለው ምድብ አልተገኘም።**\nእባክዎ በዋናው ቻናል ላይ ይመልከቱ፦", 
+                reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("📢 ADEY MARKET ቻናል", url=MAIN_CHANNEL_LINK)),
+                parse_mode="Markdown"
+            )
+        user_states.pop(message.from_user.id, None)
+
+    elif step == "waiting_review_text":
+        rating = state.get("rating", "5")
+        text = message.text.strip()
+        user_name = message.from_user.first_name or "ደንበኛ"
+        
+        review_msg = (
+            "💬 **አዲስ ደንበኛ አስተያየት!**\n\n"
+            f"👤 **ስም፦** {user_name}\n"
+            f"⭐ **ሬቲንግ፦** {'⭐' * int(rating)}\n"
+            f"📝 **አስተያየት፦** {text}"
+        )
+        try:
+            bot.send_message(REVIEW_CHANNEL, review_msg, parse_mode="Markdown")
+            bot.reply_to(message, "✅ **አስተያየትዎ በጥሩ ሁኔታ ደርሶናል፣ እጅግ እናመሰግናለን!**")
+        except Exception as e:
+            bot.reply_to(message, "✅ **አስተያየትዎ ተቀብለናል!**")
+        user_states.pop(message.from_user.id, None)
 
 @bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and m.text and "t.me/" in m.text)
 def handle_post_link_sold(message):
@@ -117,7 +201,13 @@ def handle_post_link_sold(message):
                         caption=updated_caption,
                         parse_mode="Markdown"
                     )
-                bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ብሩ እና አድራሻው ብቻ ጠፍተዋል!")
+                
+                try:
+                    bot.forward_message(ARCHIVE_CHANNEL, target_chan, msg_id)
+                except Exception as ex:
+                    print(f"Archive error: {ex}")
+
+                bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!")
             else:
                 bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
         else:
@@ -445,6 +535,12 @@ def callback_mark_sold_from_bot(call):
                         parse_mode="Markdown"
                     )
                     success = True
+                
+                try:
+                    bot.forward_message(ARCHIVE_CHANNEL, target_channel, int(target_msg_id))
+                except Exception as ex:
+                    print(f"Archive forward error: {ex}")
+
         except Exception as ex:
             print(f"Target channel update error: {ex}")
 
@@ -470,13 +566,13 @@ def callback_mark_sold_from_bot(call):
 
         if success:
             bot.edit_message_text(
-                "🔴 **[እቃው ተሽጧል / SOLD OUT ተብሎ ተስተካክሏል!]**",
+                "🔴 **[እቃው ተሽጧል / SOLD OUT ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!]**",
                 call.message.chat.id,
                 call.message.message_id,
                 parse_mode="Markdown",
                 reply_markup=None
             )
-            bot.answer_callback_query(call.id, "እቃው ተሽጧል ተብሎ ብሩ እና ቦታው ተወግደዋል!")
+            bot.answer_callback_query(call.id, "እቃው ተሽጧል ተብሎ ተስተካክሏል!")
         else:
             bot.answer_callback_query(call.id, "ተስተካክሏል ወይም የተፈጠረ ስህተት አለ።", show_alert=True)
     except Exception as e:
