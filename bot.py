@@ -150,8 +150,8 @@ def callback_condition(call):
         elif cat_key == "wardrobe":
             admin_sessions[call.from_user.id]["step"] = "waiting_wardrobe_details"
             bot.edit_message_text(
-                "🚪 **የቁምሳጥኑን መጠን (ሜትር ወይም የበር ብዛት) ይጻፉልኝ**\n\n"
-                "*(ምሳሌ: 2 ሜትር ቁምሳጥን ወይም 2 በር ቁምሳጥን)*", 
+                "🚪 **የቁምሳጥኑን መጠን ወይም ዓይነት ይጻፉልኝ**\n\n"
+                "*(ምሳሌ: 1-20 ወይም 1-50 ወይም 80 cm)*", 
                 call.message.chat.id, 
                 call.message.message_id, 
                 parse_mode="Markdown"
@@ -194,9 +194,11 @@ def handle_wardrobe_details(message):
 
     user_text = message.text.strip()
     if "ቁምሳጥን" not in user_text:
-        user_text = f"{user_text} ቁምሳጥን"
+        wardrobe_formatted = f"{user_text} ቁምሳጥን"
+    else:
+        wardrobe_formatted = user_text
 
-    admin_sessions[message.from_user.id]["wardrobe_details"] = user_text
+    admin_sessions[message.from_user.id]["wardrobe_details"] = wardrobe_formatted
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
     
     bot.reply_to(message, "📝 **አሁን የቁምሳጥኑን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 17,500 ብር | Mexico)*", parse_mode="Markdown")
@@ -229,7 +231,6 @@ def handle_price_location(message):
     
     cat_name, target_channel = CATEGORY_CHANNELS.get(cat_key, ("✨ ተጨማሪ", "@adey_market_other"))
 
-    # እንደ እቃው አይነት ትክክለኛውን መስመር መምረጥ
     if cat_key == "tv" and tv_details:
         item_type_line = f"📺 **የእቃው አይነት፦** {tv_details}\n"
     elif cat_key == "wardrobe" and wardrobe_details:
