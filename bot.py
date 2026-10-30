@@ -10,6 +10,7 @@ ADMIN_IDS = ["8703011579", "8144813729", "8994655471"]
 
 bot = telebot.TeleBot(BOT_TOKEN)
 MAIN_CHANNEL = "@adeymarket3"
+MAIN_CHANNEL_LINK = "https://t.me/adeymarket3"
 
 CATEGORY_CHANNELS = {
     "bed": ("🛏️ አልጋ", "@adey_market_bed"),
@@ -160,7 +161,7 @@ def callback_condition(call):
             admin_sessions[call.from_user.id]["step"] = "waiting_price"
             bot.edit_message_text(
                 "📝 **አሁን የእቃውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n"
-                "*(ምሳሌ: 15000 ብር | ቦሌ)*", 
+                "*(ምሳሌ: 18,000 ብር | ጀሞ)*", 
                 call.message.chat.id, 
                 call.message.message_id, 
                 parse_mode="Markdown"
@@ -232,22 +233,22 @@ def handle_price_location(message):
     cat_name, target_channel = CATEGORY_CHANNELS.get(cat_key, ("✨ ተጨማሪ", "@adey_market_other"))
 
     if cat_key == "tv" and tv_details:
-        item_type_line = f"📺 **የእቃው አይነት፦** {tv_details}\n"
+        item_type_line = f"📦 **የእቃው አይነት፦** {tv_details}\n"
     elif cat_key == "wardrobe" and wardrobe_details:
-        item_type_line = f"🚪 **የእቃው አይነት፦** {wardrobe_details}\n"
+        item_type_line = f"📦 **የእቃው አይነት፦** {wardrobe_details}\n"
     else:
         item_type_line = f"📦 **የእቃው አይነት፦** {cat_name}\n"
 
     caption_text = (
         "🟡 **ADEY MARKET** 🏠\n\n"
         f"{item_type_line}"
-        f"💰 **ዋጋ፦** {price} ብር\n"
+        f"💰 **ዋጋ፦** {price}\n"
         f"📍 **ቦታ፦** {location}\n"
         f"☑ **ሁኔታ፦** {condition}\n"
         "📞 **ለመሸጥ፦** 0985427286\n"
         "📩 **ለInbox፦** @adeyused\n\n"
         "👇 **JOIN ያድርጉ፣ አዳዲስ እቃዎችን ያግኙ!**\n"
-        f"📢 **Telegram Channel፦** {MAIN_CHANNEL}\n\n\n"
+        f"📢 **Telegram Channel:-** {MAIN_CHANNEL_LINK}\n\n\n"
         "🤝 **ADEY MARKET**"
     )
 
