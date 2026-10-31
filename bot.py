@@ -271,6 +271,15 @@ def callback_condition(call):
                 call.message.message_id, 
                 parse_mode="Markdown"
             )
+        elif cat_key == "extra":
+            admin_sessions[call.from_user.id]["step"] = "waiting_extra_details"
+            bot.edit_message_text(
+                "✨ **የእቃውን ዓይነት (ስም) ይጻፉልኝ**\n\n"
+                "*(ምሳሌ: የጋዝ ምድጃ፣ ብረት፣ ወዘተ)*", 
+                call.message.chat.id, 
+                call.message.message_id, 
+                parse_mode="Markdown"
+            )
         else:
             admin_sessions[call.from_user.id]["step"] = "waiting_price"
             bot.edit_message_text(
@@ -383,6 +392,17 @@ def handle_wardrobe_details(message):
     
     bot.reply_to(message, "📝 **አሁን የቁምሳጥኑን መጠን ወይም ዓይነት ይጻፉልኝ**\n\n*(ምሳሌ: 17,500 ብር | Mexico)*", parse_mode="Markdown")
 
+@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_extra_details")
+def handle_extra_details(message):
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return
+
+    user_text = message.text.strip()
+    admin_sessions[message.from_user.id]["extra_details"] = user_text
+    admin_sessions[message.from_user.id]["step"] = "waiting_price"
+    
+    bot.reply_to(message, "📝 **አሁን የእቃውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 4,000 ብር | መገናኛ)*", parse_mode="Markdown")
+
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_price")
 def handle_price_location(message):
     if str(message.from_user.id) not in ADMIN_IDS:
@@ -412,6 +432,7 @@ def handle_price_location(message):
     tvstand_details = session.get("tvstand_details", "")
     centertable_details = session.get("centertable_details", "")
     wardrobe_details = session.get("wardrobe_details", "")
+    extra_details = session.get("extra_details", "")
     
     cat_name, target_channel = CATEGORY_CHANNELS.get(cat_key, ("✨ ተጨማሪ", "@adey_market_other"))
 
@@ -427,6 +448,8 @@ def handle_price_location(message):
         item_type_line = f"📦 **የእቃው አይነት፦** {centertable_details}\n"
     elif cat_key == "wardrobe" and wardrobe_details:
         item_type_line = f"📦 **የእቃው አይነት፦** {wardrobe_details}\n"
+    elif cat_key == "extra" and extra_details:
+        item_type_line = f"📦 **የእቃው አይነት፦** {extra_details}\n"
     else:
         item_type_line = f"📦 **የእቃው አይነት፦** {cat_name}\n"
 
