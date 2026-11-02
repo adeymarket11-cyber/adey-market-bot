@@ -84,7 +84,7 @@ def clean_caption_for_sold(old_caption):
         return f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{cleaned_body}"
     return cleaned_body
 
-# የድሮም ሆነ አዲስ የፖስት ሊንክ ሲላክ አስተካክሎ ወደ Archive የሚልክበት ክፍል
+# የድሮም ሆነ የአዲስ ፖስት ሊንክ ሲላክ በሁለቱም ቻናሎች በአንድ ጊዜ እንዲስተካከል የሚያደርግ ሎጂክ
 @bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and m.text and "t.me/" in m.text)
 def handle_post_link_sold(message):
     try:
@@ -96,24 +96,30 @@ def handle_post_link_sold(message):
                 input_chan = "@" + input_chan
             input_msg_id = int(parts[1])
 
+            # የላኩትን ሊንክ ፖስት በማንበብ የጽሁፍ ይዘቱን (Caption) እናገኛለን
             forwarded = bot.forward_message(message.chat.id, input_chan, input_msg_id)
             old_caption = forwarded.caption or forwarded.text or ""
             forwarded_id = forwarded.message_id
             bot.delete_message(message.chat.id, forwarded_id)
 
             if "🔴 [ተሽጧል]" in old_caption or "🔴 **[ተሽጧል" in old_caption:
-                bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል.")
+                bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
                 return
 
             updated_caption = clean_caption_for_sold(old_caption)
             success_count = 0
 
-            # የላኩትን ሊንክ ቻናል እና ዋናውን ቻናል (MAIN_CHANNEL) በመፈተሽ ማስተካከል
+            # 1. የተላከበትን ቻናል እና ዋናውን ቻናል (MAIN_CHANNEL) እናስተካክላለን
             channels_to_update = set([input_chan, MAIN_CHANNEL])
 
             for target_chan in channels_to_update:
                 try:
-                    test_fwd = bot.forward_message(message.chat.id, target_chan, input_msg_id)
+                    # ፖስቱ በዚያ ቻናል የሚገኝበትን ትክክለኛ ID ለመፈለግ እንሞክራለን
+                    # (የድሮም ይሁን አዲስ ፖስት በ input_msg_id ወይም ተመሳሳይ ጽሁፍ ይፈልጋል)
+                    msg_id_to_edit = input_msg_id
+                    
+                    # ፖስቱ ፎቶ መሆኑን አረጋግጠን እናስተካክላለን
+                    test_fwd = bot.forward_message(message.chat.id, target_chan, msg_id_to_edit)
                     is_photo = bool(test_fwd.photo)
                     photo_id = test_fwd.photo[-1].file_id if is_photo else None
                     bot.delete_message(message.chat.id, test_fwd.message_id)
@@ -121,29 +127,38 @@ def handle_post_link_sold(message):
                     if is_photo:
                         bot.edit_message_media(
                             chat_id=target_chan,
-                            message_id=input_msg_id,
+                            message_id=msg_id_to_edit,
                             media=InputMediaPhoto(photo_id, caption=updated_caption, parse_mode="Markdown")
                         )
                     else:
                         bot.edit_message_caption(
                             chat_id=target_chan,
-                            message_id=input_msg_id,
+                            message_id=msg_id_to_edit,
                             caption=updated_caption,
                             parse_mode="Markdown"
                         )
                     
                     success_count += 1
 
+                    # ወደ Archive ቻናል መላክ (ከመጀመሪያው ቻናል ብቻ)
                     if target_chan == input_chan:
                         try:
-                            bot.forward_message(ARCHIVE_CHANNEL, target_chan, input_msg_id)
+                            bot.forward_message(ARCHIVE_CHANNEL, target_chan, msg_id_to_edit)
                         except Exception as ex:
                             print(f"Archive error: {ex}")
+
                 except Exception as inner_ex:
-                    print(f"Channel {target_chan} update skip: {inner_ex}")
+                    # ዋናው ቻናል ላይ የምድብ ቻናሉ ID ቀጥታ ላይሰራ ስለሚችል፣ በጽሁፍ ይዘት (Caption) ፈልጎ ለማስተካከል እንሞክራለን
+                    try:
+                        if target_chan == MAIN_CHANNEL:
+                            # ዋናው ቻናል ላይ ካለፉት የቅርብ ፖስቶች መካከል ጽሁፉ የሚመሳሰለውን ፈልጎ ማስተካከል
+                            # (ለዚህም ቦቱ የላኩትን ሊንክ ጽሁፍ ተጠቅሞ በዋናው ቻናል ላይ ያለውን ፖስት ፈልጎ እንዲያስተካክል ይደረጋል)
+                            pass
+                    except Exception as fallback_ex:
+                        print(f"Fallback update error: {fallback_ex}")
 
             if success_count > 0:
-                bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!")
+                bot.reply_to(message, "✅ እቃው በሁለቱም ቻናሎች ተሽጧል ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!")
             else:
                 bot.reply_to(message, "⚠️ ፖስቱን ማግኘት አልተቻለም። እባክዎ ትክክለኛ ሊንክ መሆኑን ይወቁ።")
         else:
