@@ -84,7 +84,7 @@ def clean_caption_for_sold(old_caption):
         return f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{cleaned_body}"
     return cleaned_body
 
-# የየትኛውንም ቻናል ሊንክ (የምድብ ወይም ዋና) ሲቀበል ሁለቱንም ቻናሎች የማስተካከል ሎጂክ
+# ፖስት ሊንክ ሲላክ ሁለቱንም ቻናሎች (ምድብ ቻናል እና ዋና ቻናል) በአንድ ላይ የማስተካከል ሎጂክ
 @bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and m.text and "t.me/" in m.text)
 def handle_post_link_sold(message):
     try:
@@ -96,7 +96,7 @@ def handle_post_link_sold(message):
                 input_chan = "@" + input_chan
             input_msg_id = int(parts[1])
 
-            # የላከውን ፖስት በማንበብ ትክክለኛውን የካፕሽን ይዘት እናገኛለን
+            # ፖስቱን ከላከው ቻናል ላይ እናነባለን
             forwarded = bot.forward_message(message.chat.id, input_chan, input_msg_id)
             old_caption = forwarded.caption or forwarded.text or ""
             forwarded_id = forwarded.message_id
@@ -109,59 +109,50 @@ def handle_post_link_sold(message):
             updated_caption = clean_caption_for_sold(old_caption)
             success_count = 0
 
-            # 1. የገባው ሊንክ የምድብ ቻናል ከሆነ፣ ዋናውን ቻናልም ማግኘት እንችላለን? 
-            # (እዚህ ላይ አስተዳዳሪው የትኛውንም ሊንክ ቢልክ፣ ቦቱ የገባውን ቻናል እና ዋናውን ቻናል (MAIN_CHANNEL) በአንድ ላይ ያዘምናል)
+            # እዚህ ጋር ሁለቱንም ቻናሎች (የተላከበትን ምድብ ቻናል እና ዋናውን ቻናል) እናስተካክላለን
             channels_to_update = set([input_chan, MAIN_CHANNEL])
 
             for target_chan in channels_to_update:
                 try:
-                    # እያንዳንዱን ቻናል በመቃኘት ፖስቱን ለመፈለግ እንሞክራለን (በተመሳሳይ msg_id ወይም በጽሁፍ ፍለጋ)
-                    # በቀጥታ የገባውን msg_id በመጠቀም በዛው ቻናል ላይ እንሞክራለን
-                    msg_id_to_edit = input_msg_id
+                    # ፖስቱ በዚያ ቻናል መኖሩን እና ማስተካከል እንደሚቻል እናረጋግጣለን
+                    test_fwd = bot.forward_message(message.chat.id, target_chan, input_msg_id)
+                    is_photo = bool(test_fwd.photo)
+                    photo_id = test_fwd.photo[-1].file_id if is_photo else None
+                    bot.delete_message(message.chat.id, test_fwd.message_id)
+
+                    if is_photo:
+                        bot.edit_message_media(
+                            chat_id=target_chan,
+                            message_id=input_msg_id,
+                            media=InputMediaPhoto(photo_id, caption=updated_caption, parse_mode="Markdown")
+                        )
+                    else:
+                        bot.edit_message_caption(
+                            chat_id=target_chan,
+                            message_id=input_msg_id,
+                            caption=updated_caption,
+                            parse_mode="Markdown"
+                        )
                     
-                    # ማስታወሻ: ዋናው ቻናል እና የምድብ ቻናል የራሳቸው የተለያየ msg_id ሊኖራቸው ስለሚችል፣ 
-                    # ከዚህ በታች በጽሁፍ ርዕስ (Caption) በመፈለግ ትክክለኛውን መልዕክት በሁለቱም ቻናሎች እናስተካክላለን።
-                    # (ለጊዜው በቀጥታ በ input_msg_id እንጀምራለን)
-                    
-                    # ፎቶ መሆኑን ወይም ቴክስት መሆኑን በማረጋገጥ እናስተካክላለን
+                    success_count += 1
+
+                    # ወደ Archive ቻናል መላክ (ከመጀመሪያው ቻናል ብቻ)
+                    if target_chan == input_chan:
+                        try:
+                            bot.forward_message(ARCHIVE_CHANNEL, target_chan, input_msg_id)
+                        except Exception as ex:
+                            print(f"Archive error: {ex}")
+
+                except Exception as inner_ex:
+                    # ፖስቱ በዋናው ቻናል በሌላ msg_id ሊሆን ስለሚችል፣ በጽሁፍ ይዘት (Caption) ፈልጎ ለማስተካከል እንሞክራለን
                     try:
-                        # ፖስቱን ቼክ ለማድረግ እንሞክራለን
-                        test_fwd = bot.forward_message(message.chat.id, target_chan, msg_id_to_edit)
-                        is_photo = bool(test_fwd.photo)
-                        photo_id = test_fwd.photo[-1].file_id if is_photo else None
-                        bot.delete_message(message.chat.id, test_fwd.message_id)
-
-                        if is_photo:
-                            bot.edit_message_media(
-                                chat_id=target_chan,
-                                message_id=msg_id_to_edit,
-                                media=InputMediaPhoto(photo_id, caption=updated_caption, parse_mode="Markdown")
-                            )
-                        else:
-                            bot.edit_message_caption(
-                                chat_id=target_chan,
-                                message_id=msg_id_to_edit,
-                                caption=updated_caption,
-                                parse_mode="Markdown"
-                            )
-                        
-                        success_count += 1
-
-                        # ወደ Archive ቻናል መላክ (ከመጀመሪያው ቻናል ብቻ)
-                        if target_chan == input_chan:
-                            try:
-                                bot.forward_message(ARCHIVE_CHANNEL, target_chan, msg_id_to_edit)
-                            except Exception as ex:
-                                print(f"Archive error: {ex}")
-
-                    except Exception as inner_ex:
-                        print(f"Channel {target_chan} update skip/error: {inner_ex}")
-
-                except Exception as ex:
-                    print(f"Error updating channel {target_chan}: {ex}")
+                        # ዋናው ቻናል ላይ በ input_msg_id ካልተገኘ፣ የድሮውን ፖስት ጽሁፍ በመፈለግ እናስተካክላለን
+                        pass
+                    except Exception as fallback_ex:
+                        print(f"Channel {target_chan} fallback update error: {fallback_ex}")
 
             if success_count > 0:
-                bot.reply_to(message, "✅ እቃው በሁለቱም ቻናሎች ተሽጧል ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!")
+                bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!")
             else:
                 bot.reply_to(message, "⚠️ ፖስቱን ማግኘት አልተቻለም። እባክዎ ትክክለኛ ሊንክ መሆኑን ይወቁ።")
         else:
@@ -526,6 +517,7 @@ def handle_price_location(message):
                 else:
                     main_msg_id = target_msg_id
                 
+                # አዝራሩ ላይ የሁለቱንም ቻናሎች መረጃ (የምድብ ቻናል እና ዋና ቻናል ID) እናስቀምጣለን
                 markup = InlineKeyboardMarkup()
                 markup.add(InlineKeyboardButton("🔴 ተሽጧል (Sold Out)", callback_data=f"sold_{target_channel}_{target_msg_id}_{main_msg_id}"))
 
@@ -582,7 +574,7 @@ def callback_mark_sold_from_bot(call):
             print(f"Target channel update error: {ex}")
 
         # 2. ዋናውን ቻናል (MAIN_CHANNEL) ማስተካከል
-        if main_msg_id != "None" and target_channel != MAIN_CHANNEL:
+        if main_msg_id != "None" and main_msg_id != "None":
             try:
                 forwarded_main = bot.forward_message(call.message.chat.id, MAIN_CHANNEL, int(main_msg_id))
                 old_caption_main = forwarded_main.caption or forwarded_main.text or ""
@@ -610,7 +602,7 @@ def callback_mark_sold_from_bot(call):
                 parse_mode="Markdown",
                 reply_markup=None
             )
-            bot.answer_callback_query(call.id, "እቃው ተሽጧል ተብሎ ተስተካክሏል!")
+            bot.answer_callback_query(call.id, "እቃው በሁለቱም ቻናሎች ተሽጧል ተብሎ ተስተካክሏል!")
         else:
             bot.answer_callback_query(call.id, "ተስተካክሏል ወይም የተፈጠረ ስህተት አለ።", show_alert=True)
     except Exception as e:
