@@ -364,15 +364,16 @@ def handle_price_location(message):
     cat_name, target_channel = CATEGORY_CHANNELS.get(cat_key, ("✨ ተጨማሪ", "@adey_market_other"))
     item_type = details if details else cat_name
 
-    # የJoin ሐረግ እና የ⭐ ሁኔታ ኢሞጂ የያዘው አጭርና ውብ ቅርጸት
+    # አዲሱ የተስተካከለው ውብ እና አጭር Caption ቅርጸት
     caption_text = (
         "🟡 **ADEY MARKET** 🏠\n\n"
         f"📦 {item_type}\n"
         f"💰 ዋጋ፦ {price}\n"
         f"📍 ቦታ፦ {location}\n"
-        f"⭐ ሁኔታ፦ {condition}\n"
+        f"⭐ ሁኔታ፦ {condition}\n\n"
+        "👉 **እቃ ለመሸጥ ፎቶና ዋጋ በ Inbox ይላኩልን!**\n"
         "📞 0985427286 | 📩 @adeyused\n\n"
-        "👇 **ቴሌግራም ቻናላችንን Join በማድረግ ቤተሰብ ይሁኑ!**\n"
+        "👇 **Join በማድረግ አዳዲስ እቃዎችን ያግኙ!**\n"
         f"📢 **Channel:** {MAIN_CHANNEL_LINK}"
     )
 
