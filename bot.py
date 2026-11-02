@@ -84,7 +84,6 @@ def clean_caption_for_sold(old_caption):
         return f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{cleaned_body}"
     return cleaned_body
 
-# የፖስት ሊንክ ሲላክ (በተለይ የምድብ ቻናሉ ሊንክ ሲላክ ሁለቱንም ቻናሎች እንዲያስተካክል)
 @bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and m.text and "t.me/" in m.text)
 def handle_post_link_sold(message):
     try:
@@ -144,7 +143,7 @@ def handle_post_link_sold(message):
             if success_count > 0:
                 bot.reply_to(message, "✅ እቃው በሁለቱም ቻናሎች ተሽጧል ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!")
             else:
-                bot.reply_to(message, "⚠️ ፖስቱን ማግኘት አልተቻለም። እባክዎ የምድብ ቻናሉን ሊንክ (ምሳሌ: adey_market_other) ተጠቅመው ይሞክሩ።")
+                bot.reply_to(message, "⚠️ ፖስቱን ማግኘት አልተቻለም።")
         else:
             bot.reply_to(message, "⚠️ ትክክለኛ የፖስት ሊንክ ይላኩ")
     except Exception as e:
@@ -236,189 +235,98 @@ def callback_condition(call):
         
         if cat_key == "bed":
             admin_sessions[call.from_user.id]["step"] = "waiting_bed_details"
-            bot.edit_message_text(
-                "🛏️ **የአልጋውን መጠን (ሜትር) ይጻፉልኝ**\n\n"
-                "*(ምሳሌ: 1-20 ወይም 1-50)*", 
-                call.message.chat.id, 
-                call.message.message_id, 
-                parse_mode="Markdown"
-            )
+            bot.edit_message_text("🛏️ **የአልጋውን መጠን ይጻፉልኝ** (ምሳሌ: 1-20)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         elif cat_key == "washing":
             admin_sessions[call.from_user.id]["step"] = "waiting_washing_details"
-            bot.edit_message_text(
-                "🧺 **የ Washing Machine ኪሎ (kg) መጠን ይጻፉልኝ**\n\n"
-                "*(ምሳሌ: 7 ወይም 10 ወይም 8kg)*", 
-                call.message.chat.id, 
-                call.message.message_id, 
-                parse_mode="Markdown"
-            )
+            bot.edit_message_text("🧺 **የ Washing Machine ኪሎ መጠን ይጻፉልኝ** (ምሳሌ: 7kg)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         elif cat_key == "tv":
             admin_sessions[call.from_user.id]["step"] = "waiting_tv_details"
-            bot.edit_message_text(
-                "📺 **የቲቪውን ኢንች (እና ስማርት ከሆነ ስማርት የሚለውን ቃል) ይጻፉልኝ**\n\n"
-                "*(ምሳሌ: 40 ወይም 40 smart)*", 
-                call.message.chat.id, 
-                call.message.message_id, 
-                parse_mode="Markdown"
-            )
+            bot.edit_message_text("📺 **የቲቪውን ኢንች ይጻፉልኝ** (ምሳሌ: 40 smart)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         elif cat_key == "tvstand":
             admin_sessions[call.from_user.id]["step"] = "waiting_tvstand_details"
-            bot.edit_message_text(
-                "🪞 **የ TV Stand መጠን ወይም ዓይነት ይጻፉልኝ**\n\n"
-                "*(ምሳሌ: 1.2 ሜትር ወይም ዘመናዊ TV Stand)*", 
-                call.message.chat.id, 
-                call.message.message_id, 
-                parse_mode="Markdown"
-            )
+            bot.edit_message_text("🪞 **የ TV Stand መጠን ይጻፉልኝ** (ምሳሌ: 1.2 ሜትር)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         elif cat_key == "centertable":
             admin_sessions[call.from_user.id]["step"] = "waiting_centertable_details"
-            bot.edit_message_text(
-                "🛋️ **የመሀል ጠረቤዛውን ዓይነት ወይም መጠን ይጻፉልኝ**\n\n"
-                "*(ምሳሌ: ማርብል ጠረቤዛ ወይም የእንጨት)*", 
-                call.message.chat.id, 
-                call.message.message_id, 
-                parse_mode="Markdown"
-            )
+            bot.edit_message_text("🛋️ **የመሀል ጠረቤዛውን ዓይነት ይጻፉልኝ** (ምሳሌ: ማርብል)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         elif cat_key == "wardrobe":
             admin_sessions[call.from_user.id]["step"] = "waiting_wardrobe_details"
-            bot.edit_message_text(
-                "🚪 **የቁምሳጥኑን መጠን ወይም ዓይነት ይጻፉልኝ**\n\n"
-                "*(ምሳሌ: 1-20 ወይም 1-50 ወይም 80 cm)*", 
-                call.message.chat.id, 
-                call.message.message_id, 
-                parse_mode="Markdown"
-            )
+            bot.edit_message_text("🚪 **የቁምሳጥኑን መጠን ይጻፉልኝ** (ምሳሌ: 1-20)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         elif cat_key == "extra":
             admin_sessions[call.from_user.id]["step"] = "waiting_extra_details"
-            bot.edit_message_text(
-                "✨ **የእቃውን ዓይነት (ስም) ይጻፉልኝ**\n\n"
-                "*(ምሳሌ: የጋዝ ምድጃ፣ ብረት፣ ወዘተ)*", 
-                call.message.chat.id, 
-                call.message.message_id, 
-                parse_mode="Markdown"
-            )
+            bot.edit_message_text("✨ **የእቃውን ዓይነት ይጻፉልኝ** (ምሳሌ: የጋዝ ምድጃ)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         else:
             admin_sessions[call.from_user.id]["step"] = "waiting_price"
-            bot.edit_message_text(
-                "📝 **አሁን የእቃውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n"
-                "*(ምሳሌ: 18,000 ብር | ጀሞ)*", 
-                call.message.chat.id, 
-                call.message.message_id, 
-                parse_mode="Markdown"
-            )
+            bot.edit_message_text("📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 18,000 | ጀሞ)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_bed_details")
 def handle_bed_details(message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return
-
     user_text = message.text.strip()
-    if "አልጋ" not in user_text:
-        bed_formatted = f"{user_text} አልጋ"
-    else:
-        bed_formatted = user_text
-
+    bed_formatted = f"{user_text} አልጋ" if "አልጋ" not in user_text else user_text
     admin_sessions[message.from_user.id]["bed_details"] = bed_formatted
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
-    
-    bot.reply_to(message, "📝 **አሁን የአልጋውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 15,000 ብር | ቦሌ)*", parse_mode="Markdown")
+    bot.reply_to(message, "📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 15,000 | ቦሌ)", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_washing_details")
 def handle_washing_details(message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return
-
     user_text = message.text.strip().lower()
     import re
     numbers = re.findall(r'\d+', user_text)
     kg_val = numbers[0] if numbers else user_text
-
-    washing_formatted = f"{kg_val} kg washing machine"
-
-    admin_sessions[message.from_user.id]["washing_details"] = washing_formatted
+    admin_sessions[message.from_user.id]["washing_details"] = f"{kg_val} kg washing machine"
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
-    
-    bot.reply_to(message, "📝 **አሁን የ Washing Machine ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 22,000 ብር | መገናኛ)*", parse_mode="Markdown")
+    bot.reply_to(message, "📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 22,000 | መገናኛ)", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_tv_details")
 def handle_tv_details(message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return
-
     user_text = message.text.strip().lower()
     is_smart = "smart" in user_text
     import re
     numbers = re.findall(r'\d+', user_text)
     inch_val = numbers[0] if numbers else user_text
-
-    if is_smart:
-        tv_formatted = f"{inch_val} inch Smart TV"
-    else:
-        tv_formatted = f"{inch_val} inch TV"
-
-    admin_sessions[message.from_user.id]["tv_details"] = tv_formatted
+    admin_sessions[message.from_user.id]["tv_details"] = f"{inch_val} inch Smart TV" if is_smart else f"{inch_val} inch TV"
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
-    
-    bot.reply_to(message, "📝 **አሁን የቲቪውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 29,000 ብር | መገናኛ)*", parse_mode="Markdown")
+    bot.reply_to(message, "📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 29,000 | መገናኛ)", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_tvstand_details")
 def handle_tvstand_details(message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return
-
     user_text = message.text.strip()
-    if "tv stand" not in user_text.lower():
-        tvstand_formatted = f"{user_text} TV Stand"
-    else:
-        tvstand_formatted = user_text
-
-    admin_sessions[message.from_user.id]["tvstand_details"] = tvstand_formatted
+    admin_sessions[message.from_user.id]["tvstand_details"] = user_text if "tv stand" in user_text.lower() else f"{user_text} TV Stand"
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
-    
-    bot.reply_to(message, "📝 **አሁን የ TV Stand ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 8,500 ብር | ቦሌ)*", parse_mode="Markdown")
+    bot.reply_to(message, "📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 8,500 | ቦሌ)", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_centertable_details")
 def handle_centertable_details(message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return
-
     user_text = message.text.strip()
-    if "ጠረቤዛ" not in user_text:
-        ct_formatted = f"{user_text} የመሀል ጠረቤዛ"
-    else:
-        ct_formatted = user_text
-
-    admin_sessions[message.from_user.id]["centertable_details"] = ct_formatted
+    admin_sessions[message.from_user.id]["centertable_details"] = user_text if "ጠረቤዛ" in user_text else f"{user_text} የመሀል ጠረቤዛ"
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
-    
-    bot.reply_to(message, "📝 **አሁን የመሀል ጠረቤዛውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 6,000 ብር | ፒያሳ)*", parse_mode="Markdown")
+    bot.reply_to(message, "📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 6,000 | ፒያሳ)", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_wardrobe_details")
 def handle_wardrobe_details(message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return
-
     user_text = message.text.strip()
-    if "ቁምሳጥን" not in user_text:
-        wardrobe_formatted = f"{user_text} ቁምሳጥን"
-    else:
-        wardrobe_formatted = user_text
-
-    admin_sessions[message.from_user.id]["wardrobe_details"] = wardrobe_formatted
+    admin_sessions[message.from_user.id]["wardrobe_details"] = user_text if "ቁምሳጥን" in user_text else f"{user_text} ቁምሳጥን"
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
-    
-    bot.reply_to(message, "📝 **አሁን የቁምሳጥኑን መጠን ወይም ዓይነት ይጻፉልኝ**\n\n*(ምሳሌ: 17,500 ብር | Mexico)*", parse_mode="Markdown")
+    bot.reply_to(message, "📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 17,500 | Mexico)", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_extra_details")
 def handle_extra_details(message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return
-
-    user_text = message.text.strip()
-    admin_sessions[message.from_user.id]["extra_details"] = user_text
+    admin_sessions[message.from_user.id]["extra_details"] = message.text.strip()
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
-    
-    bot.reply_to(message, "📝 **አሁን የእቃውን ዋጋ እና ቦታ (Price & Location) ይጻፉልኝ**\n\n*(ምሳሌ: 4,000 ብር | መገናኛ)*", parse_mode="Markdown")
+    bot.reply_to(message, "📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 4,000 | መገናኛ)", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_price")
 def handle_price_location(message):
@@ -430,7 +338,6 @@ def handle_price_location(message):
         return
 
     user_text = message.text.strip()
-    
     if "|" in user_text:
         parts = user_text.split("|")
         price = parts[0].strip()
@@ -443,45 +350,30 @@ def handle_price_location(message):
     cat_key = session["cat_key"]
     identifier = session["identifier"]
     condition = session["condition"]
-    bed_details = session.get("bed_details", "")
-    washing_details = session.get("washing_details", "")
-    tv_details = session.get("tv_details", "")
-    tvstand_details = session.get("tvstand_details", "")
-    centertable_details = session.get("centertable_details", "")
-    wardrobe_details = session.get("wardrobe_details", "")
-    extra_details = session.get("extra_details", "")
+    
+    details = (
+        session.get("bed_details") or 
+        session.get("washing_details") or 
+        session.get("tv_details") or 
+        session.get("tvstand_details") or 
+        session.get("centertable_details") or 
+        session.get("wardrobe_details") or 
+        session.get("extra_details")
+    )
     
     cat_name, target_channel = CATEGORY_CHANNELS.get(cat_key, ("✨ ተጨማሪ", "@adey_market_other"))
+    item_type = details if details else cat_name
 
-    if cat_key == "bed" and bed_details:
-        item_type_line = f"📦 **የእቃው አይነት፦** {bed_details}\n"
-    elif cat_key == "washing" and washing_details:
-        item_type_line = f"📦 **የእቃው አይነት፦** {washing_details}\n"
-    elif cat_key == "tv" and tv_details:
-        item_type_line = f"📦 **የእቃው አይነት፦** {tv_details}\n"
-    elif cat_key == "tvstand" and tvstand_details:
-        item_type_line = f"📦 **የእቃው አይነት፦** {tvstand_details}\n"
-    elif cat_key == "centertable" and centertable_details:
-        item_type_line = f"📦 **የእቃው አይነት፦** {centertable_details}\n"
-    elif cat_key == "wardrobe" and wardrobe_details:
-        item_type_line = f"📦 **የእቃው አይነት፦** {wardrobe_details}\n"
-    elif cat_key == "extra" and extra_details:
-        item_type_line = f"📦 **የእቃው አይነት፦** {extra_details}\n"
-    else:
-        item_type_line = f"📦 **የእቃው አይነት፦** {cat_name}\n"
-
+    # የJoin ሐረግ እና የ⭐ ሁኔታ ኢሞጂ የያዘው አጭርና ውብ ቅርጸት
     caption_text = (
         "🟡 **ADEY MARKET** 🏠\n\n"
-        f"{item_type_line}"
-        f"💰 **ዋጋ፦** {price}\n"
-        f"📍 **ቦታ፦** {location}\n"
-        f"☑ **ሁኔታ፦** {condition}\n"
-        "📞 **ለመሸጥ/ለመደወል፦** 0985427286\n"
-        "📩 **ለInbox፦** @adeyused\n\n"
-        "🔄 **ያገለገሉ እቃዎችን ለመሸጥ ወይም ለመግዛት Inbox ያድርጉልን!**\n\n"
-        "👇 **JOIN ያድርጉ፣ አዳዲስ እቃዎችን ያግኙ!**\n"
-        f"📢 **Telegram Channel:-** {MAIN_CHANNEL_LINK}\n\n\n"
-        "🤝 **ADEY MARKET**"
+        f"📦 {item_type}\n"
+        f"💰 ዋጋ፦ {price}\n"
+        f"📍 ቦታ፦ {location}\n"
+        f"⭐ ሁኔታ፦ {condition}\n"
+        "📞 0985427286 | 📩 @adeyused\n\n"
+        "👇 **ቴሌግራም ቻናላችንን Join በማድረግ ቤተሰብ ይሁኑ!**\n"
+        f"📢 **Channel:** {MAIN_CHANNEL_LINK}"
     )
 
     group_data = media_group_buffer.pop(identifier, None)
@@ -507,18 +399,17 @@ def handle_price_location(message):
                 else:
                     main_msg_id = target_msg_id
                 
-                # አዝራሩ ላይ የሁለቱንም ቻናሎች ትክክለኛ መረጃ እንይዛለን
                 markup = InlineKeyboardMarkup()
                 markup.add(InlineKeyboardButton("🔴 ተሽጧል (Sold Out)", callback_data=f"sold_{target_msg_id}_{main_msg_id}_{target_channel[1:]}"))
 
-                bot.reply_to(message, "✅ እቃው በትክክል ወደ ቻናሎቹ ተልኳል!\n\nይህ እቃ ሲሸጥ ከታች ያለውን ቁልፍ ይንኩ:", parse_mode="Markdown", reply_markup=markup)
+                bot.reply_to(message, "✅ እቃው ተልኳል! ሲሸጥ ይህንን ቁልፍ ይንኩ:", parse_mode="Markdown", reply_markup=markup)
         except Exception as e:
             bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("sold_"))
 def callback_mark_sold_from_bot(call):
     if str(call.from_user.id) not in ADMIN_IDS:
-        bot.answer_callback_query(call.id, "ይህንን ለማድረግ ፈቃድ የለዎትም!", show_alert=True)
+        bot.answer_callback_query(call.id, "ፈቃድ የለዎትም!", show_alert=True)
         return
 
     parts = call.data.split("_")
@@ -527,13 +418,12 @@ def callback_mark_sold_from_bot(call):
         main_msg_id = int(parts[2]) if parts[2] != "None" else None
         chan_name = "@" + parts[3]
     else:
-        bot.answer_callback_query(call.id, "የመረጃ ስህተት አጋጥሟል!", show_alert=True)
+        bot.answer_callback_query(call.id, "ስህተት አጋጥሟል!", show_alert=True)
         return
 
     success_any = False
 
     try:
-        # 1. የምድብ ቻናሉን ማስተካከል (Target Channel)
         try:
             forwarded = bot.forward_message(call.message.chat.id, chan_name, target_msg_id)
             old_caption = forwarded.caption or forwarded.text or ""
@@ -563,11 +453,10 @@ def callback_mark_sold_from_bot(call):
                 try:
                     bot.forward_message(ARCHIVE_CHANNEL, chan_name, target_msg_id)
                 except Exception as ex:
-                    print(f"Archive forward error: {ex}")
+                    print(f"Archive error: {ex}")
         except Exception as ex:
             print(f"Category channel update error: {ex}")
 
-        # 2. ዋናውን ቻናል ማስተካከል (Main Channel)
         if main_msg_id and chan_name != MAIN_CHANNEL:
             try:
                 forwarded_main = bot.forward_message(call.message.chat.id, MAIN_CHANNEL, main_msg_id)
@@ -599,15 +488,15 @@ def callback_mark_sold_from_bot(call):
 
         if success_any:
             bot.edit_message_text(
-                "🔴 **[እቃው በሁለቱም ቻናሎች ተሽጧል / SOLD OUT ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!]**",
+                "🔴 **[በሁለቱም ቻናሎች ተሽጧል ተብሎ ተስተካክሏል!]**",
                 call.message.chat.id,
                 call.message.message_id,
                 parse_mode="Markdown",
                 reply_markup=None
             )
-            bot.answer_callback_query(call.id, "እቃው በሁለቱም ቻናሎች ተሽጧል ተብሎ ተስተካክሏል!")
+            bot.answer_callback_query(call.id, "ተስተካክሏል!")
         else:
-            bot.answer_callback_query(call.id, "ቀደም ብሎ ተስተካክሏል ወይም ስህተት ተፈጥሯል።", show_alert=True)
+            bot.answer_callback_query(call.id, "ቀደም ብሎ ተስተካክሏል ወይም ስህተት አለ።", show_alert=True)
     except Exception as e:
         bot.answer_callback_query(call.id, f"ስህተት ተፈጥሯል: {e}", show_alert=True)
 
