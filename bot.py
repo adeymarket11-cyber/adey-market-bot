@@ -84,6 +84,7 @@ def clean_caption_for_sold(old_caption):
         return f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{cleaned_body}"
     return cleaned_body
 
+# ሊንክ በመላክ የሚደረግ የተሸጠ ምልክት (ለማንኛውም ቻናል ሊንክ ይሰራል)
 @bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and m.text and "t.me/" in m.text)
 def handle_post_link_sold(message):
     try:
@@ -105,6 +106,7 @@ def handle_post_link_sold(message):
             if "🔴 [ተሽጧል]" not in old_caption and "🔴 **[ተሽጧል" not in old_caption:
                 updated_caption = clean_caption_for_sold(old_caption)
                 
+                # 1. የተላከበትን ቻናል (ለምሳሌ የምድብ ቻናሉን) ማስተካከል
                 if forwarded.photo:
                     photo_file_id = forwarded.photo[-1].file_id
                     bot.edit_message_media(
@@ -120,18 +122,21 @@ def handle_post_link_sold(message):
                         parse_mode="Markdown"
                     )
                 
+                # 2. ወደ Archive ቻናል መላክ
                 try:
                     bot.forward_message(ARCHIVE_CHANNEL, target_chan, msg_id)
                 except Exception as ex:
                     print(f"Archive error: {ex}")
 
+                # 3. ዋናው ቻናል ላይ (MAIN_CHANNEL) ተመሳሳይ ፖስት ካለ መፈለግ እና ማስተካከል
+                # (ማስታወሻ: አስተዳዳሪዎች ዋናውን ቻናል ሊንክ ወይም የምድብ ቻናል ሊንክ ቢልኩ ሁለቱም ቦታ እንዲጠፋ ይደረጋል)
                 bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!")
             else:
                 bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
         else:
             bot.reply_to(message, "⚠️ ትክክለኛ የፖስት ሊንክ ይላኩ (ምሳሌ: https://t.me/adey_market_bed/12)")
     except Exception as e:
-        bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
+            bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
 @bot.message_handler(content_types=['photo', 'video'], chat_types=['private'])
 def handle_admin_upload(message):
