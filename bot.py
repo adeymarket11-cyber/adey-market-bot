@@ -84,7 +84,7 @@ def clean_caption_for_sold(old_caption):
         return f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{cleaned_body}"
     return cleaned_body
 
-# ሊንክ በመላክ የሚደረግ የተሸጠ ምልክት (ለማንኛውም ቻናል ሊንክ ይሰራል)
+# ፖስት ሊንክ ሲላክ (ከተለያዩ ቻናሎች) ሁለቱንም ቻናሎች የማስተካከል ሎጂክ
 @bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and m.text and "t.me/" in m.text)
 def handle_post_link_sold(message):
     try:
@@ -98,6 +98,7 @@ def handle_post_link_sold(message):
                 target_chan = chan_part
             msg_id = int(parts[1])
 
+            # ፖስቱን ከታርጌት ቻናል አንብብ
             forwarded = bot.forward_message(message.chat.id, target_chan, msg_id)
             old_caption = forwarded.caption or forwarded.text or ""
             forwarded_id = forwarded.message_id
@@ -128,15 +129,13 @@ def handle_post_link_sold(message):
                 except Exception as ex:
                     print(f"Archive error: {ex}")
 
-                # 3. ዋናው ቻናል ላይ (MAIN_CHANNEL) ተመሳሳይ ፖስት ካለ መፈለግ እና ማስተካከል
-                # (ማስታወሻ: አስተዳዳሪዎች ዋናውን ቻናል ሊንክ ወይም የምድብ ቻናል ሊንክ ቢልኩ ሁለቱም ቦታ እንዲጠፋ ይደረጋል)
                 bot.reply_to(message, "✅ እቃው ተሽጧል ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!")
             else:
                 bot.reply_to(message, "ℹ️ ይህ እቃ ቀደም ብሎ ተሽጧል ተብሎ ተስተካክሏል።")
         else:
             bot.reply_to(message, "⚠️ ትክክለኛ የፖስት ሊንክ ይላኩ (ምሳሌ: https://t.me/adey_market_bed/12)")
     except Exception as e:
-            bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
+        bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
 @bot.message_handler(content_types=['photo', 'video'], chat_types=['private'])
 def handle_admin_upload(message):
@@ -485,14 +484,19 @@ def handle_price_location(message):
         
         try:
             if media_list:
+                # 1. ወደ ምድብ ቻናል መላክ (Target Channel)
                 sent_target = bot.send_media_group(target_channel, media_list)
                 target_msg_id = sent_target[0].message_id if sent_target else None
 
+                # 2. ወደ ዋናው ቻናል መላክ (Main Channel) - ሁለቱም ቻናሎች ላይ "ተሽጧል" አዝራር እንዲኖራቸው
                 main_msg_id = None
                 if target_channel != MAIN_CHANNEL:
                     sent_main = bot.send_media_group(MAIN_CHANNEL, media_list)
                     main_msg_id = sent_main[0].message_id if sent_main else None
+                else:
+                    main_msg_id = target_msg_id
                 
+                # አዝራሩ ላይ የሁለቱንም ቻናሎች መረጃ እንይዛለን
                 markup = InlineKeyboardMarkup()
                 markup.add(InlineKeyboardButton("🔴 ተሽጧል (Sold Out)", callback_data=f"sold_{target_channel}_{target_msg_id}_{main_msg_id}"))
 
@@ -514,6 +518,7 @@ def callback_mark_sold_from_bot(call):
     success = False
 
     try:
+        # 1. የምድብ ቻናሉን ማስተካከል
         try:
             forwarded = bot.forward_message(call.message.chat.id, target_channel, int(target_msg_id))
             old_caption = forwarded.caption or forwarded.text or ""
@@ -540,14 +545,15 @@ def callback_mark_sold_from_bot(call):
                     )
                     success = True
                 
+                # ወደ Archive መላክ
                 try:
                     bot.forward_message(ARCHIVE_CHANNEL, target_channel, int(target_msg_id))
                 except Exception as ex:
                     print(f"Archive forward error: {ex}")
-
         except Exception as ex:
             print(f"Target channel update error: {ex}")
 
+        # 2. ዋናውን ቻናል (MAIN_CHANNEL) ማስተካከል (ከተለየ)
         if main_msg_id != "None" and target_channel != MAIN_CHANNEL:
             try:
                 forwarded_main = bot.forward_message(call.message.chat.id, MAIN_CHANNEL, int(main_msg_id))
