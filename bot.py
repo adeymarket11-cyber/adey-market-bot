@@ -84,7 +84,7 @@ def clean_caption_for_sold(old_caption):
         return f"🔴 **[ተሽጧል / SOLD OUT]**\n\n{cleaned_body}"
     return cleaned_body
 
-# የድሮም ሆነ አዲስ ፖስት ሊንክ ሲላክ በሁለቱም ቻናሎች በአንድ ጊዜ እንዲስተካከል የሚያደርግ ሎጂክ
+# የፖስት ሊንክ ሲላክ (በተለይ የምድብ ቻናሉ ሊንክ ሲላክ ሁለቱንም ቻናሎች እንዲያስተካክል)
 @bot.message_handler(func=lambda m: str(m.from_user.id) in ADMIN_IDS and m.text and "t.me/" in m.text)
 def handle_post_link_sold(message):
     try:
@@ -108,26 +108,11 @@ def handle_post_link_sold(message):
             updated_caption = clean_caption_for_sold(old_caption)
             success_count = 0
 
-            # ሊንኩ የትኛዉም ቻናል ይሁን (ዋናው ወይም የምድብ ቻናል), ቦቱ ሁለቱንም ቻናሎች ይፈትሻል
             channels_to_update = set([input_chan, MAIN_CHANNEL])
-            
-            # የምድብ ቻናሎችን ሁሉ በመፈተሽ ከፖስቱ ጋር የሚመሳሰል ጽሁፍ ያለውን ቻናል በራስ-ሰር እንለፍ
-            for key, (c_name, c_username) in CATEGORY_CHANNELS.items():
-                channels_to_update.add(c_username)
 
             for target_chan in channels_to_update:
                 try:
-                    # ፖስቱ በዚያ ቻናል ውስጥ በመልዕክት ቁጥር ወይም በጽሁፍ ፍለጋ መኖሩን እናረጋግጣለን
-                    curr_msg_id = input_msg_id
-                    if target_chan != input_chan:
-                        # የድሮ ፖስቶች የሜሴጅ ቁጥራቸው ሊለያይ ስለሚችል፣ ተመሳሳይ ጽሁፍ/ፎቶ ያላቸውን የቅርብ ፖስቶች ለመፈተሽ እንሞክራለን
-                        # (ለቀላል እና ፈጣን ስራ በቀጥታ በ input_msg_id እንጀምራለን፣ ካልሰራ በጽሁፍ ይዘት ይስተካከላል)
-                        pass
-
-                    test_fwd = bot.forward_message(message.chat.id, target_chan, curr_msg_id)
-                    target_caption = test_fwd.caption or test_fwd.text or ""
-                    
-                    # የሁለቱ ፖስቶች ይዘት (አይነት እና ዋጋ) የሚመሳሰሉ መሆናቸውን ማረጋገጥ ይቻላል
+                    test_fwd = bot.forward_message(message.chat.id, target_chan, input_msg_id)
                     is_photo = bool(test_fwd.photo)
                     photo_id = test_fwd.photo[-1].file_id if is_photo else None
                     bot.delete_message(message.chat.id, test_fwd.message_id)
@@ -135,13 +120,13 @@ def handle_post_link_sold(message):
                     if is_photo:
                         bot.edit_message_media(
                             chat_id=target_chan,
-                            message_id=curr_msg_id,
+                            message_id=input_msg_id,
                             media=InputMediaPhoto(photo_id, caption=updated_caption, parse_mode="Markdown")
                         )
                     else:
                         bot.edit_message_caption(
                             chat_id=target_chan,
-                            message_id=curr_msg_id,
+                            message_id=input_msg_id,
                             caption=updated_caption,
                             parse_mode="Markdown"
                         )
@@ -150,7 +135,7 @@ def handle_post_link_sold(message):
 
                     if target_chan == input_chan:
                         try:
-                            bot.forward_message(ARCHIVE_CHANNEL, target_chan, curr_msg_id)
+                            bot.forward_message(ARCHIVE_CHANNEL, target_chan, input_msg_id)
                         except Exception as ex:
                             print(f"Archive error: {ex}")
                 except Exception as inner_ex:
@@ -159,9 +144,9 @@ def handle_post_link_sold(message):
             if success_count > 0:
                 bot.reply_to(message, "✅ እቃው በሁለቱም ቻናሎች ተሽጧል ተብሎ ተስተካክሏል፣ ወደ Archive ቻናልም ተልኳል!")
             else:
-                bot.reply_to(message, "⚠️ ፖስቱን ማግኘት አልተቻለም። እባክዎ ትክክለኛ ሊንክ መሆኑን ይወቁ።")
+                bot.reply_to(message, "⚠️ ፖስቱን ማግኘት አልተቻለም። እባክዎ የምድብ ቻናሉን ሊንክ (ምሳሌ: adey_market_other) ተጠቅመው ይሞክሩ።")
         else:
-            bot.reply_to(message, "⚠️ ትክክለኛ የፖስት ሊንክ ይላኩ (ምሳሌ: https://t.me/adey_market_bed/12)")
+            bot.reply_to(message, "⚠️ ትክክለኛ የፖስት ሊንክ ይላኩ")
     except Exception as e:
         bot.reply_to(message, f"ስህተት ተፈጥሯል: {e}")
 
@@ -522,6 +507,7 @@ def handle_price_location(message):
                 else:
                     main_msg_id = target_msg_id
                 
+                # አዝራሩ ላይ የሁለቱንም ቻናሎች ትክክለኛ መረጃ እንይዛለን
                 markup = InlineKeyboardMarkup()
                 markup.add(InlineKeyboardButton("🔴 ተሽጧል (Sold Out)", callback_data=f"sold_{target_msg_id}_{main_msg_id}_{target_channel[1:]}"))
 
@@ -547,6 +533,7 @@ def callback_mark_sold_from_bot(call):
     success_any = False
 
     try:
+        # 1. የምድብ ቻናሉን ማስተካከል (Target Channel)
         try:
             forwarded = bot.forward_message(call.message.chat.id, chan_name, target_msg_id)
             old_caption = forwarded.caption or forwarded.text or ""
@@ -580,6 +567,7 @@ def callback_mark_sold_from_bot(call):
         except Exception as ex:
             print(f"Category channel update error: {ex}")
 
+        # 2. ዋናውን ቻናል ማስተካከል (Main Channel)
         if main_msg_id and chan_name != MAIN_CHANNEL:
             try:
                 forwarded_main = bot.forward_message(call.message.chat.id, MAIN_CHANNEL, main_msg_id)
