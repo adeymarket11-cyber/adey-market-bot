@@ -212,6 +212,7 @@ def callback_category(call):
         InlineKeyboardButton("✨ አዲስ (New)", callback_data="cond_New"),
         InlineKeyboardButton("🔄 ያገለገለ (Used)", callback_data="cond_Used"),
         InlineKeyboardButton("⭐ ንጹህ (Slightly Used)", callback_data="cond_SlightlyUsed"),
+        InlineKeyboardButton("🌟 Almost New", callback_data="cond_AlmostNew"),
         InlineKeyboardButton("🏚️ ያረጀ (Old)", callback_data="cond_Old")
     )
     bot.edit_message_text("🛠️ **የእቃውን ሁኔታ (Condition) ይምረጡ:**", call.message.chat.id, call.message.message_id, parse_mode="Markdown", reply_markup=markup)
@@ -226,6 +227,7 @@ def callback_condition(call):
         "New": "✨ አዲስ (New)",
         "Used": "🔄 ያገለገለ (Used)",
         "SlightlyUsed": "⭐ ንጹህ (Slightly Used)",
+        "AlmostNew": "🌟 Almost New",
         "Old": "🏚️ ያረጀ (Old)"
     }
     
@@ -251,6 +253,12 @@ def callback_condition(call):
         elif cat_key == "wardrobe":
             admin_sessions[call.from_user.id]["step"] = "waiting_wardrobe_details"
             bot.edit_message_text("🚪 **የቁምሳጥኑን መጠን ይጻፉልኝ** (ምሳሌ: 1-20)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
+        elif cat_key == "dining":
+            admin_sessions[call.from_user.id]["step"] = "waiting_dining_details"
+            bot.edit_message_text("🍽️ **ባለ ስንት ወንበር ነው?** (ምሳሌ: 8)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
+        elif cat_key == "furniture":
+            admin_sessions[call.from_user.id]["step"] = "waiting_furniture_details"
+            bot.edit_message_text("🪑 **የፈርኒቸር እቃውን ስም ይጻፉልኝ** (ምሳሌ: የدفተር ጠረቤዛ)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         elif cat_key == "extra":
             admin_sessions[call.from_user.id]["step"] = "waiting_extra_details"
             bot.edit_message_text("✨ **የእቃውን ዓይነት ይጻፉልኝ** (ምሳሌ: የጋዝ ምድጃ)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
@@ -320,6 +328,26 @@ def handle_wardrobe_details(message):
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
     bot.reply_to(message, "📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 17,500 | Mexico)", parse_mode="Markdown")
 
+@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_dining_details")
+def handle_dining_details(message):
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return
+    user_text = message.text.strip()
+    import re
+    numbers = re.findall(r'\d+', user_text)
+    chair_val = numbers[0] if numbers else user_text
+    admin_sessions[message.from_user.id]["dining_details"] = f"ባለ {chair_val} የምግብ ጠረቤዛ"
+    admin_sessions[message.from_user.id]["step"] = "waiting_price"
+    bot.reply_to(message, "📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 25,000 | ቦሌ)", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_furniture_details")
+def handle_furniture_details(message):
+    if str(message.from_user.id) not in ADMIN_IDS:
+        return
+    admin_sessions[message.from_user.id]["furniture_details"] = message.text.strip()
+    admin_sessions[message.from_user.id]["step"] = "waiting_price"
+    bot.reply_to(message, "📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 12,000 | ፒያሳ)", parse_mode="Markdown")
+
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_extra_details")
 def handle_extra_details(message):
     if str(message.from_user.id) not in ADMIN_IDS:
@@ -358,13 +386,14 @@ def handle_price_location(message):
         session.get("tvstand_details") or 
         session.get("centertable_details") or 
         session.get("wardrobe_details") or 
+        session.get("dining_details") or 
+        session.get("furniture_details") or 
         session.get("extra_details")
     )
     
     cat_name, target_channel = CATEGORY_CHANNELS.get(cat_key, ("✨ ተጨማሪ", "@adey_market_other"))
     item_type = details if details else cat_name
 
-    # አዲሱ የተስተካከለው ውብ እና አጭር Caption ቅርጸት
     caption_text = (
         "🟡 **ADEY MARKET** 🏠\n\n"
         f"📦 {item_type}\n"
