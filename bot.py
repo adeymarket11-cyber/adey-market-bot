@@ -239,7 +239,7 @@ def callback_condition(call):
             admin_sessions[call.from_user.id]["step"] = "waiting_bed_details"
             bot.edit_message_text("🛏️ **የአልጋውን መጠን ይጻፉልኝ** (ምሳሌ: 1-20)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         elif cat_key == "washing":
-            admin_sessions[call.from_user.id]["step"] = "waiting_washing_details"
+            admin_sessions[call.from_user.id]["step"] = "waiting_washing_kilo"
             bot.edit_message_text("🧺 **የ Washing Machine ኪሎ መጠን ይጻፉልኝ** (ምሳሌ: 7kg)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
         elif cat_key == "tv":
             admin_sessions[call.from_user.id]["step"] = "waiting_tv_details"
@@ -276,17 +276,39 @@ def handle_bed_details(message):
     admin_sessions[message.from_user.id]["step"] = "waiting_price"
     bot.reply_to(message, "📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 15,000 | ቦሌ)", parse_mode="Markdown")
 
-@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_washing_details")
-def handle_washing_details(message):
+@bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_washing_kilo")
+def handle_washing_kilo(message):
     if str(message.from_user.id) not in ADMIN_IDS:
         return
     user_text = message.text.strip().lower()
     import re
     numbers = re.findall(r'\d+', user_text)
     kg_val = numbers[0] if numbers else user_text
-    admin_sessions[message.from_user.id]["washing_details"] = f"{kg_val} kg washing machine"
-    admin_sessions[message.from_user.id]["step"] = "waiting_price"
-    bot.reply_to(message, "📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 22,000 | መገናኛ)", parse_mode="Markdown")
+    admin_sessions[message.from_user.id]["washing_kilo"] = kg_val
+    admin_sessions[message.from_user.id]["step"] = "waiting_washing_type"
+
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton("⚡ Automatic", callback_data="wtype_Auto"),
+        InlineKeyboardButton("⚙️ Manual", callback_data="wtype_Manual")
+    )
+    bot.reply_to(message, "⚙️ **Washing Machine የትኛው ዓይነት ነው?**", parse_mode="Markdown", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("wtype_"))
+def callback_washing_type(call):
+    if str(call.from_user.id) not in ADMIN_IDS:
+        return
+    
+    w_type = call.data.replace("wtype_", "")
+    if call.from_user.id in admin_sessions:
+        kg_val = admin_sessions[call.from_user.id].get("washing_kilo", "7")
+        if w_type == "Auto":
+            admin_sessions[call.from_user.id]["washing_details"] = f"{kg_val} kg automatic washing machine"
+        else:
+            admin_sessions[call.from_user.id]["washing_details"] = f"manual {kg_val} kg washing machine"
+        
+        admin_sessions[call.from_user.id]["step"] = "waiting_price"
+        bot.edit_message_text("📝 **ዋጋ እና ቦታ ይጻፉልኝ** (ምሳሌ: 22,000 | መገናኛ)", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.from_user.id in admin_sessions and admin_sessions[m.from_user.id].get("step") == "waiting_tv_details")
 def handle_tv_details(message):
